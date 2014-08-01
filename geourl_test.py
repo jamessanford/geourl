@@ -10,45 +10,13 @@ class TestFindNumbers(unittest.TestCase):
   def setUp(self):
     super(TestFindNumbers, self).setUp()
 
-    self.inputs = filter(lambda item: item, (
-"""
-30°34′15″N 104°3′38″E
-48°53'56"N 12°39'25"E
-37_37_08_N_122_22_30_W
-39 deg 13 min 26.686 sec north latitude, 98 deg 32 min 30.506 sec west longitude
-49.440603,11.004759
-37° 37′ 8″ N, 122° 22′ 30″ W
-37.618889, -122.375
-http://wikimapia.org/#lang=en&lat=37.491400&lon=-122.211000&z=10&m=b
-http://hikebikemap.de/?zoom=12&lat=50.95942&lon=14.1342&layers=B0000FFFFF
-37 deg 48' 12.18" N 122 deg 10' 35.20" W
-36° 16' 37.3764" N, 139° 22' 30.5364" E
-N 37 ° 29 ' 49 '', W 122 ° 14 ' 25 ''
-https://www.google.com/maps/place/Brembana+Service+S.R.L./@45.876349,9.655686,48
-7m/
-http://labs.strava.com/heatmap/#15/-122.30854/37.50493/gray/both
-""".decode('utf-8').split('\n')))
-
-  def testFoo(self):
-    print self.inputs
-    self.assertEquals(1, 1)
-
-# Lat 0-90
-# Long 0-180
+# Lat 0-180
+# Long 0-90
 # minute/seconds 0-60
 # seconds can have '.xxx'
 # look at the index of NS WE , they should be close to the numbers.
-# re search that gives the 'index' where it was found...???
-#   re.search -> start, end, span, string
-
-# look for [^a-zA-z]N[^a-zA-Z] ? for the NSWE?
 
   def testBasic(self):
-#    self.assertEqual(geourl.find('37.618889, -122.375'),
-#                     [37.618889, -122.375])
-#    self.assertEqual(
-#        geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8')),
-#        [37.618889, -122.375])
     def d(n):
       return decimal.Decimal(n)
     self.assertEqual(geourl.break_apart('37.618889, -122.375'),
@@ -58,7 +26,110 @@ http://labs.strava.com/heatmap/#15/-122.30854/37.50493/gray/both
         [d('37'), d('37'), d('8'), 'N', d('122'), d('22'), d('30'), 'W'])
 
     geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
-#    geourl.find('1 2 3 4 5 6 7'.decode('utf-8'))
+    geourl.find('1 2 3 4 5 6 7'.decode('utf-8'))
+    geourl.find('37.6188888, -122.375 z=3.0'.decode('utf-8'))
+    geourl.find('37.6188888, -12.375 z=3.00'.decode('utf-8'))
+    geourl.find('37.6188888, -12.375 z=3.0000'.decode('utf-8'))
+
+  def testSignedDecimal(self):
+    match = geourl.find('49.440603,11.004759')
+    self.assertEqual(match.latitude, '49.440603')
+    self.assertEqual(match.longitude, '11.004759')
+
+    match = geourl.find('49.440603,-11.004759')
+    self.assertEqual(match.latitude, '49.440603')
+    self.assertEqual(match.longitude, '-11.004759')
+
+    match = geourl.find('-49.45,-11.01')
+    self.assertEqual(match.latitude, '-49.45')
+    self.assertEqual(match.longitude, '-11.01')
+
+  def testInvalidSignedDecimal(self):
+    # latitude out of bounds
+    match = geourl.find('-91,0.0')
+    self.assertEqual(None, match)
+
+    # latitude out of bounds
+    match = geourl.find('-103.410,10.310')
+    self.assertEqual(None, match)
+
+    # longitude out of bounds
+    match = geourl.find('36.1003, 187.4171')
+    self.assertEqual(None, match)
+
+    # longitude out of bounds
+    match = geourl.find('36.1003, -180.5')
+    self.assertEqual(None, match)
+
+  def testOther(self):
+    # no matches
+    match = geourl.find('1 2 3 4 5 6 7'.decode('utf-8'))
+    self.assertEqual(None, match)
+
+  def testCompass(self):
+    # NOTE: precision is open to discussion.
+    decimal.getcontext().prec = 9
+
+    match = geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
+    self.assertEqual('37.6188889', str(match.latitude))
+    self.assertEqual('122.375000', str(match.longitude))
+
+    # seconds can have a decimal point
+    match = geourl.find('S17 33 08.352 W69 01 29.74')
+    self.assertEqual('17.55232', str(match.latitude))
+    self.assertEqual('69.0249278', str(match.longitude))
+
+    # the word 'and' should not matter
+    match = geourl.find('S17 33 08.352 and W69 01 29.74')
+    self.assertEqual('17.55232', str(match.latitude))
+    self.assertEqual('69.0249278', str(match.longitude))
+
+  def testInvalidCompass(self):
+    # latitude hours cannot have a decimal point
+    match = geourl.find('37.000° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
+    self.assertEqual(None, match)
+
+
+class TestBulkURLs(unittest.TestCase):
+  def testBulkURLs(self):
+# expected_latitide,expected_longitude | url
+    urls = """
+37.618889,-122.375 | 37.618889, -122.375
+None | nothing here
+30.5708334,104.060556|30°34′15″N 104°3′38″E
+48.8988889,12.6569444|48°53'56"N 12°39'25"E
+37.6188889,122.375000|37_37_08_N_122_22_30_W
+49.440603,11.004759|49.440603,11.004759
+37.6188889,122.375000|37° 37′ 8″ N, 122° 22′ 30″ W
+37.491400,-122.211000|http://wikimapia.org/#lang=en&lat=37.491400&lon=-122.211000&z=10&m=b
+50.95942,14.1342|http://hikebikemap.de/?zoom=12&lat=50.95942&lon=14.1342&layers=B0000FFFFF
+37.8033833,122.176445|37 deg 48' 12.18" N 122 deg 10' 35.20" W
+36.2770490,139.375149|36° 16' 37.3764" N, 139° 22' 30.5364" E
+37.4969444,122.240277|N 37 ° 29 ' 49 '', W 122 ° 14 ' 25 ''
+45.876349,9.655686|https://www.google.com/maps/place/Brembana+Service+S.R.L./@45.876349,9.655686,487m/
+39.2240795,98.5418072|39 deg 13 min 26.686 sec north latitude, 98 deg 32 min 30.506 sec west longitude
+37.50493,-122.30854|http://labs.strava.com/heatmap/#15/-122.30854/37.50493/gray/both
+"""
+
+    # NOTE: precision is open to discussion.
+    decimal.getcontext().prec = 9
+
+    for line in filter(lambda item: item, urls.split('\n')):
+      expected, url = (i.strip() for i in line.split('|'))
+      match = geourl.find(url)
+      if expected == 'None':
+        self.assertTrue(match is None)
+      else:
+        self.assertTrue(match is not None, msg='None result for "{}"'.format(url))
+        result = '{},{}'.format(match.latitude,match.longitude)
+        fail_msg = 'url "{}" expected "{}", result: "{}"'.format(url, expected, result)
+        self.assertEqual(expected, result, msg=fail_msg)
+
+
+
+# TEST: lat_h '3.000000' should NOT match: it has a decimal point
+#  ie, 37.000 37 8 N 122 22 30 W  should NOT match
+#      37     37 8 N 122 22 30 W  should match
 
 
 # Test all sample inputs

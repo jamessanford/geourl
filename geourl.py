@@ -34,29 +34,74 @@ class PatternFail(Exception):
 
 
 class Pattern(object):
-  def __init__(self, definition):
+  def __init__(self, pattern_type, definition):
+    """A pattern object that can match and convert.
+
+    pattern_type:
+      'compass' or 'degrees': type of input pattern
+    definition:
+      pattern definition, a string containing a the test function name
+                          for each element of the pattern
+    """
+
+    self.pattern_type = pattern_type
+    self.definition = definition
     self.funcs = []  # List of functions to test each element against
     self.state = {}  # The functions update this.
     self.debugstr = definition
+    self.confidence = 0  # higher values are more likely to be a real match
+    self.latitude = None  # string of signed degrees latitude
+    self.longitude = None # string of signed degrees longitude
 
     for item in definition.split():
       self.funcs.append(getattr(self, item))
+
+  def debug(self):
+    return '{}:"{}" {},{} {}'.format(self.pattern_type, self.definition, self.latitude, self.longitude, self.confidence)
 
   def matches(self, elements):
     sys.stdout.write('TESTING: %s\n' % elements)
     for (offset, testfunc) in enumerate(self.funcs):
       try:
+        # TODO: really should 'autosave' each element into 'state'.
         self.element = elements[offset]
         testfunc()
       except (IndexError, PatternFail), e:
 #        sys.stdout.write('EXCEPT: %s\n' % e)
         return False
+    self.finish(self.pattern_type)
+
     sys.stdout.write('SEEMS OK\n')
     return True
 
-  def latlng(self):
-    # Turn self.state into signed decimal...?  OK.
-    pass
+  def finish(self, pattern_type):
+    # store output
+    if pattern_type == 'compass':
+      self.latitude =  self.state['lat_h'] + (self.state['lat_m'] / 60) + (self.state['lat_s'] / 60 / 60)
+      self.longitude = self.state['lon_h'] + (self.state['lon_m'] / 60) + (self.state['lon_s'] / 60 / 60)
+    elif pattern_type == 'degrees':
+      self.latitude = str(self.state['lat_dec'])
+      self.longitude = str(self.state['lon_dec'])
+
+    # update confidence
+    if pattern_type == 'compass':
+      self.confidence = 1000  # compass patterns are a fairly strict pattern
+    elif pattern_type == 'degrees':
+      # The more specific a number after the decimal point, the more likely
+      # it is to be a coordinate degree.
+      def get_length(num):
+        # ICK FIXME
+        num_str = str(num)
+        offset = num_str.find('.')
+        if offset == -1:
+          return 0
+        else:
+          return len(num_str) - offset + 1
+      self.confidence = (get_length(self.state['lat_dec']) *
+                         get_length(self.state['lon_dec']))
+
+      # TODO: words, placement of a comma between the two, 'similar length',
+
 
   def assertStringElement(self):
     if not isinstance(self.element, basestring):
@@ -66,82 +111,110 @@ class Pattern(object):
     if not isinstance(self.element, decimal.Decimal):
       raise PatternFail('Not decimal')
 
+  def assertDecimalInteger(self):
+    self.assertDecimalElement()
+    # We only care if there is a decimal point '.' in the text,
+    # regardless of its equivalency when converted to an integer.
+    if '.' in str(self.element):
+      raise PatternFail('Not integer')
+
   def NS(self):
     self.assertStringElement()
     element = self.element.lower()
-    if element in ['n', 's']:
-      self.state['ns'] = element
+    if element in ['n', 's', 'north', 'south']:
+      self.state['ns'] = element[0]
     else:
       raise PatternFail('Not N/S')
 
   def EW(self):
     self.assertStringElement()
     element = self.element.lower()
-    if element in ['e', 'w']:
-      self.state['ew'] = element
+    if element in ['e', 'w', 'east', 'west']:
+      self.state['ew'] = element[0]
     else:
       raise PatternFail('Not N/S')
 
   def lat_h(self):
-    self.assertDecimalElement()
+    self.assertDecimalInteger()
     if self.element < 0 or self.element > 90:
       raise PatternFail('out of range')
-    # TODO: MUST BE INTEGER
+    self.state['lat_h'] = self.element
 
   def lat_m(self):
+    self.assertDecimalInteger()
     if self.element < 0 or self.element > 60:
       raise PatternFail('out of range')
-    # TODO: MUST BE INTEGER
+    self.state['lat_m'] = self.element
 
   def lat_s(self):
+    self.assertDecimalElement()
     if self.element < 0 or self.element > 60:
       raise PatternFail('out of range')
+    self.state['lat_s'] = self.element
 
   def lon_h(self):
+    self.assertDecimalInteger()
     if self.element < 0 or self.element > 180:
       raise PatternFail('out of range')
-    # TODO: MUST BE INTEGER
+    self.state['lon_h'] = self.element
 
   def lon_m(self):
+    self.assertDecimalInteger()
     if self.element < 0 or self.element > 60:
       raise PatternFail('out of range')
-    # TODO: MUST BE INTEGER
+    self.state['lon_m'] = self.element
 
   def lon_s(self):
+    self.assertDecimalElement()
     if self.element < 0 or self.element > 60:
       raise PatternFail('out of range')
+    self.state['lon_s'] = self.element
 
   def lat_dec(self):
+    self.assertDecimalElement()
     if self.element < -90 or self.element > 90:
       raise PatternFail('out of range')
-    # TODO: LIKELIHOOD
+    self.state['lat_dec'] = self.element
 
   def lon_dec(self):
+    self.assertDecimalElement()
     if self.element < -180 or self.element > 180:
       raise PatternFail('out of range')
-    # TODO: LIKELIHOOD
+    self.state['lon_dec'] = self.element
 
 
 # The input is broken down into a sequence of numbers and 'NSEW' letters.
 # We then look inside that sequence for a pattern.
 # Each item in each pattern below is the name of a test function.
 PATTERNS = (
-  Pattern('NS lat_h lat_m lat_s EW lon_h lon_m lon_s'),
-  Pattern('lat_h lat_m lat_s NS lon_h lon_m lon_s EW'),
-  Pattern('lat_dec lon_dec')
+  ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),
+  ('.', 'compass', 'NS lat_h lat_m lat_s EW lon_h lon_m lon_s'),
+  ('.', 'compass', 'lat_h lat_m lat_s NS lon_h lon_m lon_s EW'),
+  ('.', 'degrees', 'lat_dec lon_dec')
 )
 
 
 def break_apart(input):
   output = []
-#  for m in re.finditer('((?=(^|[^a-z]))[nsew](?=($|[^a-z])))|(-?[0-9]+\.?[0-9]*)', input,
 # NOTE: FIXME: to get standalone nsew?  though it really doesnt matter.
 #   (or actual words north/south/west/east) -> 'west' breaks it. (WE)
-  for m in re.finditer('([nsew])|(-?[0-9]+\.?[0-9]*)', input,
-                       re.I):
+#  for m in re.finditer('([nsew])|(-?[0-9]+\.?[0-9]*)', input,
+#                       re.I):
+# TODO: should probably split by actual words and numbers, so that
+# the numbers actually have to be 'in sequence'.  could also remove
+# words like 'and', 'by', 'at', 'hour[s]/minute[s]/second[s]'
+# 'latitude', 'longitude'
+# (also allow 'anything' between two compass locations?)
+
+# Uhh, yikes, this ignores anything except elements we know about.
+  for m in re.finditer('([a-z]+)|(-?[0-9]+\.?[0-9]*)', input, re.I):
     element = m.group()
-    if re.match('[nsew]', element, re.I) is None:
+    if re.match('^([nsew]|north|south|west|east)$', element, re.I):
+      pass
+    elif re.match('^(-?[0-9]+\.?[0-9]*)$', element):
       element = decimal.Decimal(element)
+    else:
+      continue
     output.append(element)
   sys.stdout.write('LAME: %s\n' % output)
   return output
@@ -176,13 +249,25 @@ def find(input):
 
 
   maybe = []
-  for pattern in PATTERNS:
-    for element_start in xrange(len(elements)):
-      match = pattern.matches(elements[element_start:])
-      if match:
-        maybe.append(pattern.debugstr)
+  for pattern_re, pattern_type, pattern_definition in PATTERNS:
+    if re.search(pattern_re, input):
+      for element_start in xrange(len(elements)):
+        # TODO FIXME: the 'match' needs to return an actual state...fuck.
+        # This is SHIT.  The Pattern thing should not mutate...
+        #   it should be only for 'testing'...and returning a result object.
+        pattern = Pattern(pattern_type, pattern_definition)  # FIXME TODO FUCKUP ICK
+        match = pattern.matches(elements[element_start:])
+        if match:
+          maybe.append(pattern)
 
-  sys.stdout.write('MAYBE: %s\n' % maybe)
+  maybe.sort(cmp=lambda x, y: cmp(y.confidence, x.confidence))
+  for m in maybe:
+    sys.stdout.write('MAYBE: {}\n'.format(m.debug()))
+  if maybe and maybe[0].confidence != 0:
+    sys.stdout.write('GOOD: {}\n'.format(maybe[0].debug()))
+    return maybe[0]
+
+  return None
 
 # Not sure, I kinda want to just find "all" numbers and NSEW, and then
 # figure out what to do based on that.  but it will find 'stray' numbers,
@@ -196,10 +281,6 @@ def find(input):
 # 0-180, 0-60, 0-60
 # if '': 'N' or 'S'
 # <followed by lon>
-
-  if lat is None or lon is None:
-    return None
-  return [lat, lon]
 
 
 if __name__ == '__main__':
