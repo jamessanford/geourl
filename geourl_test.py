@@ -5,16 +5,19 @@ import decimal
 import unittest
 import geourl
 
-
 class TestFindNumbers(unittest.TestCase):
+  # Testing notes:
+  #   Lat 0-180
+  #   Long 0-90
+  #   minute/seconds 0-60
+  #   seconds can have '.xxx'
+  # in compass mode, N/S/E/W/, should be close to, or next to, the input
+
   def setUp(self):
     super(TestFindNumbers, self).setUp()
 
-# Lat 0-180
-# Long 0-90
-# minute/seconds 0-60
-# seconds can have '.xxx'
-# look at the index of NS WE , they should be close to the numbers.
+    # NOTE: precision is open to discussion.
+    decimal.getcontext().prec = 9
 
   def testBasic(self):
     def d(n):
@@ -25,6 +28,8 @@ class TestFindNumbers(unittest.TestCase):
         geourl.break_apart('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8')),
         [d('37'), d('37'), d('8'), 'N', d('122'), d('22'), d('30'), 'W'])
 
+  def testSmokeTest(self):
+    # No crashing allowed.
     geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
     geourl.find('1 2 3 4 5 6 7'.decode('utf-8'))
     geourl.find('37.6188888, -122.375 z=3.0'.decode('utf-8'))
@@ -61,15 +66,32 @@ class TestFindNumbers(unittest.TestCase):
     match = geourl.find('36.1003, -180.5')
     self.assertEqual(None, match)
 
-  def testOther(self):
+  def testBestMatch(self):
     # no matches
     match = geourl.find('1 2 3 4 5 6 7'.decode('utf-8'))
     self.assertEqual(None, match)
 
-  def testCompass(self):
-    # NOTE: precision is open to discussion.
-    decimal.getcontext().prec = 9
+    # Even with the 'z' float at the end, we find the correct entry.
+    expected = '37.6188888,-122.375'
+    match = geourl.find('37.6188888, -122.375 z=3')
+    self.assertEqual(str(match), expected)
+    match = geourl.find('37.6188888, -122.375 z=3.0')
+    self.assertEqual(str(match), expected)
+    match = geourl.find('37.6188888, -122.375 z=3.00')
+    self.assertEqual(str(match), expected)
+    match = geourl.find('37.6188888, -122.375 z=3.0000')
+    self.assertEqual(str(match), expected)
 
+  def testCompassMatchWins(self):
+    # Without a compass match
+    match = geourl.find('-12.671, 41.014')
+    self.assertEqual(str(match), '-12.671,41.014')
+
+    # When there is a compass match and also floats, the compass match wins.
+    match = geourl.find('-37.5123, 0, 37 29 49N, 122 14 25W, -12.671, 41.014')
+    self.assertEqual(str(match), '37.4969444,122.240277')
+
+  def testCompass(self):
     match = geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
     self.assertEqual('37.6188889', str(match.latitude))
     self.assertEqual('122.375000', str(match.longitude))
@@ -85,12 +107,35 @@ class TestFindNumbers(unittest.TestCase):
     self.assertEqual('69.0249278', str(match.longitude))
 
   def testInvalidCompass(self):
+    # normal compass works as expected
+    match = geourl.find('37 37 8 N 122 22 30 W')
+    self.assertEqual(str(match), '37.6188889,122.375000')
+
+    match = geourl.find('37.000 37 8 N 122 22 30 W')
+    self.assertTrue(match is None)
+
     # latitude hours cannot have a decimal point
     match = geourl.find('37.000° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
-    self.assertEqual(None, match)
+    self.assertTrue(match is None)
+
+  def testBestGuess(self):
+    match = geourl.find('/47/54m/-1.4003,57.007/z=18900/t=3')
+    self.assertEqual(str(match), '-1.4003,57.007')
+    match = geourl.find('/47/54m/-1.4003,57.007/z=18/t=3.00000')
+    self.assertEqual(str(match), '-1.4003,57.007')
+
+  def testMultipleMatches(self):
+    match = geourl.find('1.0 2.00 3.00 4.00 5.0 6.0')
+    # TODO: unspecified result
 
 
 class TestBulkURLs(unittest.TestCase):
+  def setUp(self):
+    super(TestBulkURLs, self).setUp()
+
+    # NOTE: precision is open to discussion.
+    decimal.getcontext().prec = 9
+
   def testBulkURLs(self):
 # expected_latitide,expected_longitude | url
     urls = """
@@ -111,8 +156,7 @@ None | nothing here
 37.50493,-122.30854|http://labs.strava.com/heatmap/#15/-122.30854/37.50493/gray/both
 """
 
-    # NOTE: precision is open to discussion.
-    decimal.getcontext().prec = 9
+    tested_url_count = 0
 
     for line in filter(lambda item: item, urls.split('\n')):
       expected, url = (i.strip() for i in line.split('|'))
@@ -124,25 +168,9 @@ None | nothing here
         result = '{},{}'.format(match.latitude,match.longitude)
         fail_msg = 'url "{}" expected "{}", result: "{}"'.format(url, expected, result)
         self.assertEqual(expected, result, msg=fail_msg)
+      tested_url_count += 1
 
-
-
-# TEST: lat_h '3.000000' should NOT match: it has a decimal point
-#  ie, 37.000 37 8 N 122 22 30 W  should NOT match
-#      37     37 8 N 122 22 30 W  should match
-
-
-# Test all sample inputs
-# testSampleURLs
-# testValidFormats
-# testBestGuess
-#   /47/54m/-1.4003,57.007/z=18900/t=3
-#   /47/54m/-1.4003,57.007/z=18/t=3.00000
-#   ^ tricky.  should pick the one where both have good amount of digits.
-#     use a*b digits?  probably.  or (a+1)*(b+1)?
-# testMultipleMatches
-# Test things like 1.0 2.00 3.00 4.00 5.0 6.0
-# ^ what should the result be?  "indeterminate"
+    self.assertTrue(tested_url_count > 10)
 
 
 if __name__ == '__main__':

@@ -56,6 +56,9 @@ class Pattern(object):
     for item in definition.split():
       self.funcs.append(getattr(self, item))
 
+  def __str__(self):
+    return '{},{}'.format(self.latitude, self.longitude)
+
   def debug(self):
     return '{}:"{}" {},{} {}'.format(self.pattern_type, self.definition, self.latitude, self.longitude, self.confidence)
 
@@ -187,7 +190,7 @@ class Pattern(object):
 # We then look inside that sequence for a pattern.
 # Each item in each pattern below is the name of a test function.
 PATTERNS = (
-  ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),
+  ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),  # lat/long reversed
   ('.', 'compass', 'NS lat_h lat_m lat_s EW lon_h lon_m lon_s'),
   ('.', 'compass', 'lat_h lat_m lat_s NS lon_h lon_m lon_s EW'),
   ('.', 'degrees', 'lat_dec lon_dec')
