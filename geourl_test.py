@@ -24,6 +24,7 @@ class TestFindNumbers(unittest.TestCase):
       return decimal.Decimal(n)
     self.assertEqual(geourl.break_apart('37.618889, -122.375'),
                      [d('37.618889'), d('-122.375')])
+    # TODO: FIXME: check utf-8 vs unicode
     self.assertEqual(
         geourl.break_apart('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8')),
         [d('37'), d('37'), d('8'), 'N', d('122'), d('22'), d('30'), 'W'])
@@ -111,6 +112,7 @@ class TestFindNumbers(unittest.TestCase):
     match = geourl.find('37 37 8 N 122 22 30 W')
     self.assertEqual(str(match), '37.6188889,122.375000')
 
+    # latitude hours cannot have a decimal point
     match = geourl.find('37.000 37 8 N 122 22 30 W')
     self.assertTrue(match is None)
 
@@ -119,6 +121,7 @@ class TestFindNumbers(unittest.TestCase):
     self.assertTrue(match is None)
 
   def testBestGuess(self):
+    # a bunch of numbers, but we still pull out the lat/long
     match = geourl.find('/47/54m/-1.4003,57.007/z=18900/t=3')
     self.assertEqual(str(match), '-1.4003,57.007')
     match = geourl.find('/47/54m/-1.4003,57.007/z=18/t=3.00000')
@@ -126,7 +129,7 @@ class TestFindNumbers(unittest.TestCase):
 
   def testMultipleMatches(self):
     match = geourl.find('1.0 2.00 3.00 4.00 5.0 6.0')
-    # TODO: unspecified result
+    # TODO: unspecified result, could be 2,3 or 3,4
 
 
 class TestBulkURLs(unittest.TestCase):

@@ -29,6 +29,18 @@ args = None  # ARGS.parse_args()
 log = logging.getLogger('geourl')
 
 
+# The input is broken down into a sequence of numbers and 'NSEW' letters.
+# Look inside that sequence for the below patterns.
+# The pattern definition keywords (lat_h, lat_dec) are names of functions,
+# those functions store an element or fail the sequence.
+PATTERNS = (
+  ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),  # lat/long reversed
+  ('.', 'compass', 'NS lat_h lat_m lat_s EW lon_h lon_m lon_s'),
+  ('.', 'compass', 'lat_h lat_m lat_s NS lon_h lon_m lon_s EW'),
+  ('.', 'degrees', 'lat_dec lon_dec')
+)
+
+
 class PatternFail(Exception):
   pass
 
@@ -48,7 +60,6 @@ class Pattern(object):
     self.definition = definition
     self.funcs = []  # List of functions to test each element against
     self.state = {}  # The functions update this.
-    self.debugstr = definition
     self.confidence = 0  # higher values are more likely to be a real match
     self.latitude = None  # string of signed degrees latitude
     self.longitude = None # string of signed degrees longitude
@@ -59,22 +70,22 @@ class Pattern(object):
   def __str__(self):
     return '{},{}'.format(self.latitude, self.longitude)
 
-  def debug(self):
+  def debugstr(self):
     return '{}:"{}" {},{} {}'.format(self.pattern_type, self.definition, self.latitude, self.longitude, self.confidence)
 
   def matches(self, elements):
-    sys.stdout.write('TESTING: %s\n' % elements)
+    log.debug('TESTING: %s', elements)
     for (offset, testfunc) in enumerate(self.funcs):
       try:
         # TODO: really should 'autosave' each element into 'state'.
         self.element = elements[offset]
         testfunc()
       except (IndexError, PatternFail), e:
-#        sys.stdout.write('EXCEPT: %s\n' % e)
+#        log.debug('EXCEPT, %s', e)
         return False
     self.finish(self.pattern_type)
 
-    sys.stdout.write('SEEMS OK\n')
+    log.debug('SEEMS OK')
     return True
 
   def finish(self, pattern_type):
@@ -121,6 +132,7 @@ class Pattern(object):
     if '.' in str(self.element):
       raise PatternFail('Not integer')
 
+  # TODO: use a decorator for the 'state' storage?  or not?
   def NS(self):
     self.assertStringElement()
     element = self.element.lower()
@@ -186,17 +198,6 @@ class Pattern(object):
     self.state['lon_dec'] = self.element
 
 
-# The input is broken down into a sequence of numbers and 'NSEW' letters.
-# We then look inside that sequence for a pattern.
-# Each item in each pattern below is the name of a test function.
-PATTERNS = (
-  ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),  # lat/long reversed
-  ('.', 'compass', 'NS lat_h lat_m lat_s EW lon_h lon_m lon_s'),
-  ('.', 'compass', 'lat_h lat_m lat_s NS lon_h lon_m lon_s EW'),
-  ('.', 'degrees', 'lat_dec lon_dec')
-)
-
-
 def break_apart(input):
   output = []
 # NOTE: FIXME: to get standalone nsew?  though it really doesnt matter.
@@ -213,13 +214,11 @@ def break_apart(input):
   for m in re.finditer('([a-z]+)|(-?[0-9]+\.?[0-9]*)', input, re.I):
     element = m.group()
     if re.match('^([nsew]|north|south|west|east)$', element, re.I):
-      pass
+      output.append(element)
     elif re.match('^(-?[0-9]+\.?[0-9]*)$', element):
-      element = decimal.Decimal(element)
-    else:
-      continue
-    output.append(element)
-  sys.stdout.write('LAME: %s\n' % output)
+      output.append(decimal.Decimal(element))
+
+  log.debug('LAME: %s', output)
   return output
 
 
@@ -232,58 +231,33 @@ def find(input):
 
   elements = break_apart(input)
 
-  # Try signed degrees
-  # Try compass
-
-#NOTE if these are strings, do getattr(pattern_funcs, the_str)(element)
-# also save 'likelihood' and 'state';
-#   offer a function to get signed decimal from state.
-#   likelihood for compass is 100; likelihood for signed dec is # digits after '.'  (lowest # for the pair?  meh?  it should work though.)
-
-  # Look for:
-  # NS lat_h lat_m lat_s EW lon_h lon_m lon_s
-  # lat_h lat_m lat_s NS lon_h lon_m lon_s EW
-  # ^ these have a 'high likelihood'
-
-  # lat_dec lon_dec
-  #   ^ mark as unlikely if # digits after '.' gets smaller
-  #   ^ mark 'likelihood' the longer the digits after '.' are...
-  #   ^ then find the pair with the highest 'likelihood'
-
+  # For each possible pattern, try a search starting at each element from the broken apart list.
+  # Sort by the confidence that it is a good match.
 
   maybe = []
   for pattern_re, pattern_type, pattern_definition in PATTERNS:
     if re.search(pattern_re, input):
       for element_start in xrange(len(elements)):
         # TODO FIXME: the 'match' needs to return an actual state...fuck.
-        # This is SHIT.  The Pattern thing should not mutate...
-        #   it should be only for 'testing'...and returning a result object.
-        pattern = Pattern(pattern_type, pattern_definition)  # FIXME TODO FUCKUP ICK
+        # FIXME: The Pattern thing should not mutate...should have a Match object
+        pattern = Pattern(pattern_type, pattern_definition)
         match = pattern.matches(elements[element_start:])
         if match:
           maybe.append(pattern)
 
   maybe.sort(cmp=lambda x, y: cmp(y.confidence, x.confidence))
   for m in maybe:
-    sys.stdout.write('MAYBE: {}\n'.format(m.debug()))
+    log.debug('MAYBE: {}'.format(m.debugstr()))
   if maybe and maybe[0].confidence != 0:
-    sys.stdout.write('GOOD: {}\n'.format(maybe[0].debug()))
+    log.info('GOOD: {}'.format(maybe[0].debugstr()))
     return maybe[0]
 
   return None
 
-# Not sure, I kinda want to just find "all" numbers and NSEW, and then
-# figure out what to do based on that.  but it will find 'stray' numbers,
-# so we need to find 'which pair' makes sense.
 
-# signed degrees: eliminate 0-180 0-90 constraints
-# signed degrees: eliminate 'shorter after the decimal' before/after pairs with longer
-
-# compass:
-# 'N' 'S' or ''
-# 0-180, 0-60, 0-60
-# if '': 'N' or 'S'
-# <followed by lon>
+# TODO: output display class with templates at the top
+# repl mode that waits for 200ms of silence before showing answers
+# (to help output with multiline pastes)
 
 
 if __name__ == '__main__':
