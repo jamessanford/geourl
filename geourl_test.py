@@ -171,6 +171,9 @@ None | nothing here
 39.2240795,-98.5418072|39 deg 13 min 26.686 sec north latitude, 98 deg 32 min 30.506 sec west longitude
 37.50493,-122.30854|http://labs.strava.com/heatmap/#15/-122.30854/37.50493/gray/both
 -34.9290000,138.601|Adelaide Coordinates	34°55′44.4″S 138°36′3.6″E
+31.2,121.5|Shanghai with seconds 31°12′ 00N 121°30′ 00E
+31.2,121.5|Shanghai 31°12′N 121°30′E
+31.2083333,121.508333|Near Shanghai 31°12.5′N 121°30.5′E
 """
 
     tested_url_count = 0

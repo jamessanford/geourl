@@ -41,6 +41,10 @@ PATTERNS = (
   ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),  # lat/long reversed
   ('.', 'compass', 'NS lat_h lat_m lat_s EW lon_h lon_m lon_s'),
   ('.', 'compass', 'lat_h lat_m lat_s NS lon_h lon_m lon_s EW'),
+
+  ('.', 'compass', 'NS lat_h lat_m_dec EW lon_h lon_m_dec'),
+  ('.', 'compass', 'lat_h lat_m_dec NS lon_h lon_m_dec EW'),
+
   ('.', 'degrees', 'lat_dec lon_dec')
 )
 
@@ -188,6 +192,14 @@ class Pattern(object):
       raise PatternFail('out of range')
     self.state['lat_s'] = self.element
 
+  def lat_m_dec(self):
+    self.assertDecimalElement()
+    if self.element < 0 or self.element > 60:
+      raise PatternFail('out of range')
+    minutes = self.element.to_integral(rounding=decimal.ROUND_DOWN)
+    self.state['lat_m'] = minutes
+    self.state['lat_s'] = (self.element - minutes) * 60
+
   def lon_h(self):
     self.assertDecimalInteger()
     if self.element < 0 or self.element > 180:
@@ -205,6 +217,14 @@ class Pattern(object):
     if self.element < 0 or self.element > 60:
       raise PatternFail('out of range')
     self.state['lon_s'] = self.element
+
+  def lon_m_dec(self):
+    self.assertDecimalElement()
+    if self.element < 0 or self.element > 60:
+      raise PatternFail('out of range')
+    minutes = self.element.to_integral(rounding=decimal.ROUND_DOWN)
+    self.state['lon_m'] = minutes
+    self.state['lon_s'] = (self.element - minutes) * 60
 
   def lat_dec(self):
     self.assertDecimalElement()
