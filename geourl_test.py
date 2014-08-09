@@ -89,28 +89,38 @@ class TestFindNumbers(unittest.TestCase):
     self.assertEqual(str(match), '-12.671,41.014')
 
     # When there is a compass match and also floats, the compass match wins.
-    match = geourl.find('-37.5123, 0, 37 29 49N, 122 14 25W, -12.671, 41.014')
+    match = geourl.find('-37.5123, 0, 37 29 49N, 122 14 25E, -12.671, 41.014')
     self.assertEqual(str(match), '37.4969444,122.240277')
 
   def testCompass(self):
     match = geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
     self.assertEqual('37.6188889', str(match.latitude))
-    self.assertEqual('122.375000', str(match.longitude))
+    self.assertEqual('-122.375000', str(match.longitude))
 
     # seconds can have a decimal point
     match = geourl.find('S17 33 08.352 W69 01 29.74')
-    self.assertEqual('17.55232', str(match.latitude))
+    self.assertEqual('-17.55232', str(match.latitude))
     self.assertEqual('69.0249278', str(match.longitude))
 
     # the word 'and' should not matter
     match = geourl.find('S17 33 08.352 and W69 01 29.74')
-    self.assertEqual('17.55232', str(match.latitude))
-    self.assertEqual('69.0249278', str(match.longitude))
+    self.assertEqual('-17.55232', str(match.latitude))
+    self.assertEqual('-69.0249278', str(match.longitude))
+
+  # TODO FIXME
+  def testWest(self):
+    pass  # 'W' is -
+  def testEast(self):
+    pass  # 'E' is +
+  def testNorth(self):
+    pass  # 'N' is +
+  def testSouth(self):
+    pass  # 'S' is -
 
   def testInvalidCompass(self):
     # normal compass works as expected
     match = geourl.find('37 37 8 N 122 22 30 W')
-    self.assertEqual(str(match), '37.6188889,122.375000')
+    self.assertEqual(str(match), '37.6188889,-122.375000')
 
     # latitude hours cannot have a decimal point
     match = geourl.find('37.000 37 8 N 122 22 30 W')
