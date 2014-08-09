@@ -109,7 +109,11 @@ class Pattern(object):
     # store output
     if pattern_type == 'compass':
       self.latitude =  self.state['lat_h'] + (self.state['lat_m'] / 60) + (self.state['lat_s'] / 60 / 60)
+      if self.state['ns'] == 's':
+        self.latitude *= -1
       self.longitude = self.state['lon_h'] + (self.state['lon_m'] / 60) + (self.state['lon_s'] / 60 / 60)
+      if self.state['ew'] == 'w':
+        self.longitude *= -1
     elif pattern_type == 'degrees':
       self.latitude = str(self.state['lat_dec'])
       self.longitude = str(self.state['lon_dec'])

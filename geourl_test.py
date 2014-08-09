@@ -5,6 +5,9 @@ import decimal
 import unittest
 import geourl
 
+# TODO: FIXME: check extra zeroes at the end, ie '123.40000', should strip('0')?
+
+
 class TestFindNumbers(unittest.TestCase):
   # Testing notes:
   #   Lat 0-180
@@ -100,7 +103,7 @@ class TestFindNumbers(unittest.TestCase):
     # seconds can have a decimal point
     match = geourl.find('S17 33 08.352 W69 01 29.74')
     self.assertEqual('-17.55232', str(match.latitude))
-    self.assertEqual('69.0249278', str(match.longitude))
+    self.assertEqual('-69.0249278', str(match.longitude))
 
     # the word 'and' should not matter
     match = geourl.find('S17 33 08.352 and W69 01 29.74')
@@ -156,17 +159,18 @@ class TestBulkURLs(unittest.TestCase):
 None | nothing here
 30.5708334,104.060556|30°34′15″N 104°3′38″E
 48.8988889,12.6569444|48°53'56"N 12°39'25"E
-37.6188889,122.375000|37_37_08_N_122_22_30_W
+37.6188889,-122.375000|37_37_08_N_122_22_30_W
 49.440603,11.004759|49.440603,11.004759
-37.6188889,122.375000|37° 37′ 8″ N, 122° 22′ 30″ W
+37.6188889,-122.375000|37° 37′ 8″ N, 122° 22′ 30″ W
 37.491400,-122.211000|http://wikimapia.org/#lang=en&lat=37.491400&lon=-122.211000&z=10&m=b
 50.95942,14.1342|http://hikebikemap.de/?zoom=12&lat=50.95942&lon=14.1342&layers=B0000FFFFF
-37.8033833,122.176445|37 deg 48' 12.18" N 122 deg 10' 35.20" W
+37.8033833,-122.176445|37 deg 48' 12.18" N 122 deg 10' 35.20" W
 36.2770490,139.375149|36° 16' 37.3764" N, 139° 22' 30.5364" E
-37.4969444,122.240277|N 37 ° 29 ' 49 '', W 122 ° 14 ' 25 ''
+37.4969444,-122.240277|N 37 ° 29 ' 49 '', W 122 ° 14 ' 25 ''
 45.876349,9.655686|https://www.google.com/maps/place/Brembana+Service+S.R.L./@45.876349,9.655686,487m/
-39.2240795,98.5418072|39 deg 13 min 26.686 sec north latitude, 98 deg 32 min 30.506 sec west longitude
+39.2240795,-98.5418072|39 deg 13 min 26.686 sec north latitude, 98 deg 32 min 30.506 sec west longitude
 37.50493,-122.30854|http://labs.strava.com/heatmap/#15/-122.30854/37.50493/gray/both
+-34.9290000,138.601|Adelaide Coordinates	34°55′44.4″S 138°36′3.6″E
 """
 
     tested_url_count = 0
