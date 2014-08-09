@@ -11,7 +11,7 @@ https://www.google.com/maps/place/Brembana+Service+S.R.L./@45.876349,9.655686,48
 Example outputs:
 http://wikimapia.org/#lang=en&lat=37.491400&lon=-122.211000&z=10&m=b
 http://hikebikemap.de/?zoom=12&lat=50.95942&lon=14.1342&layers=B0000FFFFF
-http://labs.strava.com/heatmap/#15/-122.30854/37.50493/gray/both
+http://labs.strava.com/heatmap/#13/-122.30854/37.50493/gray/both
 """
 
 import decimal
@@ -25,6 +25,8 @@ ARGS = argparse.ArgumentParser(description='Translate geo location urls '
 ARGS.add_argument('geo_string', nargs='+', metavar='<geo url>',
                   help='geo location url or string')
 # TODO: arg to force lon/lat instead of lat/lon pattern.
+
+# TODO: accept some basic geocoding?  with wikipedia/wikimapia search lookup?
 
 
 args = None  # ARGS.parse_args()
@@ -44,11 +46,14 @@ PATTERNS = (
 
 
 OUTPUT = (
+  '{lat},{lon}',
   'http://wikimapia.org/#lat={lat}&lon={lon}&z=12&m=b',
   'http://hikebikemap.de/?zoom=12&lat={lat}&lon={lon}&layers=B0000FFFFF',
-  'http://www.openstreetmap.org/index.html?mlat={lat}&mlon={lon}&zoom=14',
+  'http://www.openstreetmap.org/#map=14/{lat}/{lon}',
   'http://www.panoramio.com/map/#lt={lat}&ln={lon}&z=3&k=2&a=1&tab=1&pl=all',
-  'http://labs.strava.com/heatmap/#15/{lon}/{lat}/gray/both',
+  'http://labs.strava.com/heatmap/#13/{lon}/{lat}/gray/both',
+  'http://www.bing.com/maps/#BASE64(cp={lat}~{lon}&lvl=16&q={lat},{lon})',
+  'http://tools.wmflabs.org/geohack/geohack.php?params={lat};{lon}',
   'https://www.google.com/maps/@{lat},{lon},16z'
 )
 
@@ -286,6 +291,9 @@ if __name__ == '__main__':
     ARGS.print_help()
     ARGS.exit(2, '\nerror: no geo locations given\n')
   args = ARGS.parse_args()
+
+  # NOTE: precision is open to discussion.
+  decimal.getcontext().prec = 9
 
   for geo_string in args.geo_string:
     foo = find(geo_string)
