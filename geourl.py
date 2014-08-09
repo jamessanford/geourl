@@ -41,6 +41,15 @@ PATTERNS = (
 )
 
 
+OUTPUT = (
+  'http://wikimapia.org/#lat={lat}&lon={lon}&z=10&m=b',
+  'http://hikebikemap.de/?zoom=12&lat={lat}&lon={lon}&layers=B0000FFFFF',
+  'http://www.panoramio.com/map/#lt={lat}&ln={lon}&z=3&k=2&a=1&tab=1&pl=all',
+  'http://www.openstreetmap.org/index.html?mlat={lat}&mlon={lon}&zoom=14',
+  'https://www.google.com/maps/@{lat},{lon},16z'
+)
+
+
 class PatternFail(Exception):
   pass
 
@@ -255,6 +264,11 @@ def find(input):
   return None
 
 
+def output(foo):
+  for template in OUTPUT:
+    yield template.format(lat=foo.latitude, lon=foo.longitude)
+
+
 # TODO: output display class with templates at the top
 # repl mode that waits for 200ms of silence before showing answers
 # (to help output with multiline pastes)
@@ -271,7 +285,8 @@ if __name__ == '__main__':
   args = ARGS.parse_args()
 
   for geo_string in args.geo_string:
-    location = GeoLocation(geo_string)
-    sys.stdout.write('%s\n', location)
+    foo = find(geo_string)
+    for url in output(foo):
+      sys.stdout.write('%s\n' % url)
 
   sys.exit(0)
