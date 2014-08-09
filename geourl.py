@@ -24,6 +24,8 @@ ARGS = argparse.ArgumentParser(description='Translate geo location urls '
                                            'into other destination urls.')
 ARGS.add_argument('geo_string', nargs='+', metavar='<geo url>',
                   help='geo location url or string')
+# TODO: arg to force lon/lat instead of lat/lon pattern.
+
 
 args = None  # ARGS.parse_args()
 log = logging.getLogger('geourl')
@@ -42,10 +44,11 @@ PATTERNS = (
 
 
 OUTPUT = (
-  'http://wikimapia.org/#lat={lat}&lon={lon}&z=10&m=b',
+  'http://wikimapia.org/#lat={lat}&lon={lon}&z=12&m=b',
   'http://hikebikemap.de/?zoom=12&lat={lat}&lon={lon}&layers=B0000FFFFF',
-  'http://www.panoramio.com/map/#lt={lat}&ln={lon}&z=3&k=2&a=1&tab=1&pl=all',
   'http://www.openstreetmap.org/index.html?mlat={lat}&mlon={lon}&zoom=14',
+  'http://www.panoramio.com/map/#lt={lat}&ln={lon}&z=3&k=2&a=1&tab=1&pl=all',
+  'http://labs.strava.com/heatmap/#15/{lon}/{lat}/gray/both',
   'https://www.google.com/maps/@{lat},{lon},16z'
 )
 
