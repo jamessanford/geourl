@@ -174,6 +174,7 @@ None | nothing here
 31.2,121.5|Shanghai with seconds 31°12′ 00N 121°30′ 00E
 31.2,121.5|Shanghai 31°12′N 121°30′E
 31.2083333,121.508333|Near Shanghai 31°12.5′N 121°30.5′E
+-23.55,-46.6333333|23°33′S 46°38′W São Paulo
 """
 
     tested_url_count = 0
