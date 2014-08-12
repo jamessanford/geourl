@@ -120,6 +120,16 @@ class TestFindNumbers(unittest.TestCase):
   def testSouth(self):
     pass  # 'S' is -
 
+  def testCompassMinuteDecimal(self):
+    match = geourl.find('N 38 43.91 W 123 59.37')
+    self.assertEqual(str(match), '38.7318334,-123.989500')
+
+    match = geourl.find('N38°43.91\' W123°59.37\''.decode('utf-8'))
+    self.assertEqual(str(match), '38.7318334,-123.989500')
+
+    match = geourl.find('38,43.91N 123,59.37W')
+    self.assertEqual(str(match), '38.7318334,-123.989500')
+
   def testInvalidCompass(self):
     # normal compass works as expected
     match = geourl.find('37 37 8 N 122 22 30 W')
