@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-"""Translate geo coordinates and urls into other url destinations.
+"""Given a geolocation url, output other urls that show the same location.
 
 Example inputs:
 30°34′15″N 104°3′38″E
 49.440603,11.004759
-https://www.google.com/maps/place/Brembana+Service+S.R.L./@45.876349,9.655686,487m
+https://www.google.com/maps/@45.876349,9.655686,10z
 
 Example outputs:
 http://wikimapia.org/#lang=en&lat=37.491400&lon=-122.211000&z=10&m=b
@@ -25,8 +25,7 @@ ARGS = argparse.ArgumentParser(description='Translate geo location urls '
 ARGS.add_argument('geo_string', nargs='+', metavar='<geo url>',
                   help='geo location url or string')
 # TODO: arg to force lon/lat instead of lat/lon pattern.
-
-# TODO: accept some basic geocoding?  with wikipedia/wikimapia search lookup?
+# TODO: accept some basic geocoding for place names? wikipedia/wikimapia lookup?
 
 
 args = None  # ARGS.parse_args()
@@ -37,8 +36,11 @@ log = logging.getLogger('geourl')
 # Look inside that sequence for the below patterns.
 # The pattern definition keywords (lat_h, lat_dec) are names of functions,
 # those functions store an element or fail the sequence.
+# If a pattern completes successfully, finish() is called to store the result.
 PATTERNS = (
-  ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),  # lat/long reversed
+  # lat/long are reversed
+  ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),
+
   ('.', 'compass', 'NS lat_h lat_m lat_s EW lon_h lon_m lon_s'),
   ('.', 'compass', 'lat_h lat_m lat_s NS lon_h lon_m lon_s EW'),
 
