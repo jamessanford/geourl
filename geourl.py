@@ -41,11 +41,11 @@ PATTERNS = (
   # lat/long are reversed
   ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),
 
-  ('.', 'compass', 'NS lat_h lat_m lat_s EW lon_h lon_m lon_s'),
-  ('.', 'compass', 'lat_h lat_m lat_s NS lon_h lon_m lon_s EW'),
+  ('.', 'compass', 'north_south lat_h lat_m lat_s east_west lon_h lon_m lon_s'),
+  ('.', 'compass', 'lat_h lat_m lat_s north_south lon_h lon_m lon_s east_west'),
 
-  ('.', 'compass', 'NS lat_h lat_m_dec EW lon_h lon_m_dec'),
-  ('.', 'compass', 'lat_h lat_m_dec NS lon_h lon_m_dec EW'),
+  ('.', 'compass', 'north_south lat_h lat_m_dec east_west lon_h lon_m_dec'),
+  ('.', 'compass', 'lat_h lat_m_dec north_south lon_h lon_m_dec east_west'),
 
   ('.', 'degrees', 'lat_dec lon_dec')
 )
@@ -160,21 +160,21 @@ class Pattern(object):
       raise PatternFail('Not integer')
 
   # TODO: use a decorator for the 'state' storage?  or not?
-  def NS(self):
+  def north_south(self):
     self.assertStringElement()
     element = self.element.lower()
     if element in ['n', 's', 'north', 'south']:
       self.state['ns'] = element[0]
     else:
-      raise PatternFail('Not N/S')
+      raise PatternFail('Not North/South')
 
-  def EW(self):
+  def east_west(self):
     self.assertStringElement()
     element = self.element.lower()
     if element in ['e', 'w', 'east', 'west']:
       self.state['ew'] = element[0]
     else:
-      raise PatternFail('Not N/S')
+      raise PatternFail('Not East/West')
 
   def lat_h(self):
     self.assertDecimalInteger()
