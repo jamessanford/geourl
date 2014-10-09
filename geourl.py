@@ -10,7 +10,7 @@ https://www.google.com/maps/@45.876349,9.655686,10z
 
 Example outputs:
 http://wikimapia.org/#lang=en&lat=37.491400&lon=-122.211000&z=10&m=b
-http://hikebikemap.de/?zoom=12&lat=50.95942&lon=14.1342&layers=B0000FFFFF
+http://hikebikemap.org/?zoom=12&lat=50.95942&lon=14.1342&layers=B0000FFFFF
 http://labs.strava.com/heatmap/#13/-122.30854/37.50493/gray/both
 """
 
@@ -54,7 +54,7 @@ PATTERNS = (
 OUTPUT = (
   '{lat},{lon}',
   'http://wikimapia.org/#lat={lat}&lon={lon}&z=12&m=b',
-  'http://hikebikemap.de/?zoom=12&lat={lat}&lon={lon}&layers=B0000FFFFF',
+  'http://hikebikemap.org/?zoom=12&lat={lat}&lon={lon}&layers=B0000FFFFF',
   'http://www.openstreetmap.org/#map=14/{lat}/{lon}',
   'http://www.panoramio.com/map/#lt={lat}&ln={lon}&z=3&k=2&a=1&tab=1&pl=all',
   'http://labs.strava.com/heatmap/#13/{lon}/{lat}/gray/both',
