@@ -110,6 +110,11 @@ class TestFindNumbers(unittest.TestCase):
     self.assertEqual('-17.55232', str(match.latitude))
     self.assertEqual('-69.0249278', str(match.longitude))
 
+    # the word 'at' should not matter
+    match = geourl.find('S17 33 08.352 at W69 01 29.74')
+    self.assertEqual('-17.55232', str(match.latitude))
+    self.assertEqual('-69.0249278', str(match.longitude))
+
   # TODO FIXME
   def testWest(self):
     pass  # 'W' is -
