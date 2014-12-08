@@ -23,8 +23,7 @@ class TestFindNumbers(unittest.TestCase):
     decimal.getcontext().prec = 9
 
   def testBasic(self):
-    def d(n):
-      return decimal.Decimal(n)
+    d = decimal.Decimal
     self.assertEqual(geourl.break_apart('37.618889, -122.375'),
                      [d('37.618889'), d('-122.375')])
     # TODO: FIXME: check utf-8 vs unicode
