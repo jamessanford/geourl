@@ -47,7 +47,10 @@ PATTERNS = (
   ('.', 'compass', 'north_south lat_h lat_m_dec east_west lon_h lon_m_dec'),
   ('.', 'compass', 'lat_h lat_m_dec north_south lon_h lon_m_dec east_west'),
 
-  ('.', 'degrees', 'lat_dec lon_dec')
+  ('.', 'degrees', 'lat_dec lon_dec'),
+
+  # an uncommon notation where NSEW keyword can set negative degrees
+  ('.', 'degrees', 'north_south lat_dec east_west lon_dec')
 )
 
 
@@ -122,6 +125,12 @@ class Pattern(object):
       if self.state['ew'] == 'w':
         self.longitude *= -1
     elif pattern_type == 'degrees':
+      # First check for an overriding NSEW designation.
+      if 'ns' in self.state and self.state['ns'] == 's':
+        self.state['lat_dec'] = -1 * abs(self.state['lat_dec'])
+      if 'ew' in self.state and self.state['ew'] == 'w':
+        self.state['lon_dec'] = -1 * abs(self.state['lon_dec'])
+
       self.latitude = str(self.state['lat_dec'])
       self.longitude = str(self.state['lon_dec'])
 

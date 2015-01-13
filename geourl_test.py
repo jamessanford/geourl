@@ -158,6 +158,15 @@ class TestFindNumbers(unittest.TestCase):
     match = geourl.find('1.0 2.00 3.00 4.00 5.0 6.0')
     # TODO: unspecified result, could be 2,3 or 3,4
 
+  def testFoundInTheWild(self):
+    # found on pure-gas.org
+    match = geourl.find('N33.60389 W114.59935')
+    self.assertEqual(str(match), '33.60389,-114.59935')
+
+    # found on avherald.com
+    match = geourl.find('S3.8805 E110.5147')
+    self.assertEqual(str(match), '-3.8805,110.5147')
+
 
 class TestBulkURLs(unittest.TestCase):
   def setUp(self):
