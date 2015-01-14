@@ -167,6 +167,13 @@ class TestFindNumbers(unittest.TestCase):
     match = geourl.find('S3.8805 E110.5147')
     self.assertEqual(str(match), '-3.8805,110.5147')
 
+    # modified from pt.wikipedia.org
+    #   22º52'46" de latitude sul e 42º01'07\" de longitude oeste
+    # TODO: add localized words for NSEW?  'sul', 'oeste'
+    match = geourl.find(
+                '22º52\'46" de latitude SOUTH 42º01\'07" de longitude WEST')
+    self.assertEqual(str(match), '-22.8794445,-42.0186111')
+
 
 class TestBulkURLs(unittest.TestCase):
   def setUp(self):
