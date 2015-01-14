@@ -26,7 +26,7 @@ class TestFindNumbers(unittest.TestCase):
     d = decimal.Decimal
     self.assertEqual(geourl.break_apart('37.618889, -122.375'),
                      [d('37.618889'), d('-122.375')])
-    # TODO: FIXME: check utf-8 vs unicode
+    # TODO: FIXME: check utf-8 vs other encodings?
     self.assertEqual(
         geourl.break_apart('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8')),
         [d('37'), d('37'), d('8'), 'N', d('122'), d('22'), d('30'), 'W'])
