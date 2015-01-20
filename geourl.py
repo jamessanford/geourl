@@ -85,7 +85,8 @@ class Pattern(object):
 
     self.pattern_type = pattern_type
     self.definition = definition
-    self.funcs = []  # List of functions to test each element against
+    self.funcs = []      # List of functions to test each element against.
+    self.element = None  # The current element being tested by a function.
 
     # TODO: This state should be inside 'PatternMatch'
     self.state = {}  # The functions update this.
@@ -333,11 +334,14 @@ if __name__ == '__main__':
   # NOTE: precision is open to discussion.
   decimal.getcontext().prec = 9
 
+  exit_code = 0
+
   for geo_string in args.geo_string:
     loc = ParseLocation(geo_string)
     if loc.matches():
       print_location(loc.best_match())
     else:
-      sys.stdout.write('No match\n')
+      sys.stderr.write('No match\n')
+      exit_code = 1
 
-  sys.exit(0)
+  sys.exit(exit_code)
