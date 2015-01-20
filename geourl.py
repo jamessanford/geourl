@@ -285,10 +285,18 @@ class ParseLocation(object):
   def best_match(self):
     if not self.matched:
       return None
-    return self.matched[0]
+    elif self.matched[0].confidence == 0:
+      return None
+    else:
+      return self.matched[0]
 
   def matches(self):
-    return self.matched  # heh
+    if not self.matched:
+      return []
+    elif self.matched[0].confidence == 0:
+      return []
+    else:
+      return self.matched
 
 
 # Used by unit tests.
