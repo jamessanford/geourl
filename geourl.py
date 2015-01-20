@@ -153,8 +153,7 @@ class Pattern(object):
       self.confidence = (get_length(self.state['lat_dec']) *
                          get_length(self.state['lon_dec']))
 
-      # TODO: words, placement of a comma between the two, 'similar length',
-
+      # TODO: words, placement of a comma between the two, 'similar length', ...
 
   def assertStringElement(self):
     if not isinstance(self.element, basestring):
@@ -269,6 +268,9 @@ class ParseLocation(object):
     return elements
 
   def apply_patterns(self, geo_string):
+    # For each possible pattern, try every offset of the broken apart list.
+    # Sort by the confidence that it is a good match.
+
     elements = self._break_apart(geo_string)
     for pattern_re, pattern_type, pattern_definition in PATTERNS:
       if re.search(pattern_re, geo_string):
