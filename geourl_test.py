@@ -145,7 +145,7 @@ class TestFindNumbers(unittest.TestCase):
 
     # latitude hours cannot have a decimal point
     match = geourl.find('37.000° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
-    self.assertTrue(match is None)
+    self.assertTrue(match is None, msg='match was %s' % match)
 
   def testBestGuess(self):
     # a bunch of numbers, but we still pull out the lat/long

@@ -101,34 +101,37 @@ class Pattern(object):
     return '{},{}'.format(self.latitude, self.longitude)
 
   def debugstr(self):
-    return '{}:"{}" {},{} {}'.format(self.pattern_type, self.definition, self.latitude, self.longitude, self.confidence)
+    return '{}:"{}" {},{} {}'.format(self.pattern_type, self.definition,
+                                     self.latitude, self.longitude,
+                                     self.confidence)
 
   def matches(self, elements):
-    log.debug('TESTING: %s', elements)
     for (offset, testfunc) in enumerate(self.funcs):
       try:
         # TODO: really should 'autosave' each element into 'state'.
         self.element = elements[offset]
         testfunc()
       except (IndexError, PatternFail), e:
-#        log.debug('EXCEPT, %s', e)
         return False
     self.finish(self.pattern_type)
 
-    log.debug('SEEMS OK')
     return True
 
   def finish(self, pattern_type):
-    # store output
+    # Store output.
     if pattern_type == 'compass':
-      self.latitude =  self.state['lat_h'] + (self.state['lat_m'] / 60) + (self.state['lat_s'] / 60 / 60)
+      self.latitude = (self.state['lat_h'] +
+                       (self.state['lat_m'] / 60) +
+                       (self.state['lat_s'] / 60 / 60))
       if self.state['ns'] == 's':
         self.latitude *= -1
-      self.longitude = self.state['lon_h'] + (self.state['lon_m'] / 60) + (self.state['lon_s'] / 60 / 60)
+      self.longitude = (self.state['lon_h'] +
+                        (self.state['lon_m'] / 60) +
+                        (self.state['lon_s'] / 60 / 60))
       if self.state['ew'] == 'w':
         self.longitude *= -1
     elif pattern_type == 'degrees':
-      # First check for an overriding NSEW designation.
+      # First check for an (uncommon) overriding NSEW designation.
       if 'ns' in self.state and self.state['ns'] == 's':
         self.state['lat_dec'] = -1 * abs(self.state['lat_dec'])
       if 'ew' in self.state and self.state['ew'] == 'w':
@@ -137,7 +140,7 @@ class Pattern(object):
       self.latitude = str(self.state['lat_dec'])
       self.longitude = str(self.state['lon_dec'])
 
-    # update confidence
+    # Update confidence.
     if pattern_type == 'compass':
       self.confidence = 1000  # compass patterns are a fairly strict pattern
     elif pattern_type == 'degrees':
@@ -254,7 +257,7 @@ class Pattern(object):
 
 class ParseLocation(object):
   def __init__(self, geo_string):
-    self.matched = []
+    self.result = []
 
     self.apply_patterns(geo_string)
 
@@ -277,29 +280,28 @@ class ParseLocation(object):
       if re.search(pattern_re, geo_string):
         for element_start in xrange(len(elements)):
 
-          # This is a bit wonky.
+          # This is a bit wonky, our pattern object stores the state.
           pattern = Pattern(pattern_type, pattern_definition)
-          match = pattern.matches(elements[element_start:])
-          if match:
-            self.matched.append(pattern)  # Wonky.
+          if pattern.matches(elements[element_start:]):
+            self.result.append(pattern)
 
-    self.matched.sort(cmp=lambda x, y: cmp(y.confidence, x.confidence))
+    self.result.sort(cmp=lambda x, y: cmp(y.confidence, x.confidence))
 
   def best_match(self):
-    if not self.matched:
+    if not self.result:
       return None
-    elif self.matched[0].confidence == 0:
+    elif self.result[0].confidence == 0:
       return None
     else:
-      return self.matched[0]
+      return self.result[0]
 
   def matches(self):
-    if not self.matched:
+    if not self.result:
       return []
-    elif self.matched[0].confidence == 0:
+    elif self.result[0].confidence == 0:
       return []
     else:
-      return self.matched
+      return self.result
 
 
 # Used by unit tests.
