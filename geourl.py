@@ -86,6 +86,8 @@ class Pattern(object):
     self.pattern_type = pattern_type
     self.definition = definition
     self.funcs = []  # List of functions to test each element against
+
+    # TODO: This state should be inside 'PatternMatch'
     self.state = {}  # The functions update this.
     self.confidence = 0  # higher values are more likely to be a real match
     self.latitude = None  # string of signed degrees latitude
@@ -141,7 +143,7 @@ class Pattern(object):
       # The more specific a number after the decimal point, the more likely
       # it is to be a coordinate degree.
       def get_length(num):
-        # ICK FIXME
+        # TODO: ICK
         num_str = str(num)
         offset = num_str.find('.')
         if offset == -1:
@@ -169,7 +171,6 @@ class Pattern(object):
     if '.' in str(self.element):
       raise PatternFail('Not integer')
 
-  # TODO: use a decorator for the 'state' storage?  or not?
   def north_south(self):
     self.assertStringElement()
     element = self.element.lower()
@@ -251,66 +252,57 @@ class Pattern(object):
     self.state['lon_dec'] = self.element
 
 
-def break_apart(input):
-  output = []
-# NOTE: FIXME: to get standalone nsew?  though it really doesnt matter.
-#   (or actual words north/south/west/east) -> 'west' breaks it. (WE)
-#  for m in re.finditer('([nsew])|(-?[0-9]+\.?[0-9]*)', input,
-#                       re.I):
-# TODO: should probably split by actual words and numbers, so that
-# the numbers actually have to be 'in sequence'.  could also remove
-# words like 'and', 'by', 'at', 'hour[s]/minute[s]/second[s]'
-# 'latitude', 'longitude'
-# (also allow 'anything' between two compass locations?)
+class ParseLocation(object):
+  def __init__(self, geo_string):
+    self.matched = []
 
-# Uhh, yikes, this ignores anything except elements we know about.
-  for m in re.finditer('([a-z]+)|(-?[0-9]+\.?[0-9]*)', input, re.I):
-    element = m.group()
-    if re.match('^([nsew]|north|south|west|east)$', element, re.I):
-      output.append(element)
-    elif re.match('^(-?[0-9]+\.?[0-9]*)$', element):
-      output.append(decimal.Decimal(element))
+    self.apply_patterns(geo_string)
 
-  log.debug('LAME: %s', output)
-  return output
+  def _break_apart(self, geo_string):
+    elements = []
+    for m in re.finditer('([a-z]+)|(-?[0-9]+\.?[0-9]*)', geo_string, re.I):
+      element = m.group()
+      if re.match('^([nsew]|north|south|west|east)$', element, re.I):
+        elements.append(element)
+      elif re.match('^(-?[0-9]+\.?[0-9]*)$', element):
+        elements.append(decimal.Decimal(element))
+    return elements
 
+  def apply_patterns(self, geo_string):
+    elements = self._break_apart(geo_string)
+    for pattern_re, pattern_type, pattern_definition in PATTERNS:
+      if re.search(pattern_re, geo_string):
+        for element_start in xrange(len(elements)):
 
-def find(input):
-  """Input: unicode string
-     Output: [lat, lon] floats
-  """
-  lat = None
-  lon = None
+          # This is a bit wonky.
+          pattern = Pattern(pattern_type, pattern_definition)
+          match = pattern.matches(elements[element_start:])
+          if match:
+            self.matched.append(pattern)  # Wonky.
 
-  elements = break_apart(input)
+    self.matched.sort(cmp=lambda x, y: cmp(y.confidence, x.confidence))
 
-  # For each possible pattern, try a search starting at each element from the broken apart list.
-  # Sort by the confidence that it is a good match.
+  def best_match(self):
+    if not self.matched:
+      return None
+    return self.matched[0]
 
-  maybe = []
-  for pattern_re, pattern_type, pattern_definition in PATTERNS:
-    if re.search(pattern_re, input):
-      for element_start in xrange(len(elements)):
-        # TODO FIXME: the 'match' needs to return an actual state...fuck.
-        # FIXME: The Pattern thing should not mutate...should have a Match object
-        pattern = Pattern(pattern_type, pattern_definition)
-        match = pattern.matches(elements[element_start:])
-        if match:
-          maybe.append(pattern)
-
-  maybe.sort(cmp=lambda x, y: cmp(y.confidence, x.confidence))
-  for m in maybe:
-    log.debug('MAYBE: {}'.format(m.debugstr()))
-  if maybe and maybe[0].confidence != 0:
-    log.info('GOOD: {}'.format(maybe[0].debugstr()))
-    return maybe[0]
-
-  return None
+  def matches(self):
+    return self.matched  # heh
 
 
-def output(foo):
+# Used by unit tests.
+def find(geo_string):
+  loc = ParseLocation(geo_string)
+  if not loc.matches():
+    return None
+  return loc.best_match()
+
+
+def print_location(foo):
   for template in OUTPUT:
-    yield template.format(lat=foo.latitude, lon=foo.longitude)
+    sys.stdout.write('%s\n' %
+                     template.format(lat=foo.latitude, lon=foo.longitude))
 
 
 # TODO: output display class with templates at the top
@@ -332,8 +324,10 @@ if __name__ == '__main__':
   decimal.getcontext().prec = 9
 
   for geo_string in args.geo_string:
-    foo = find(geo_string)
-    for url in output(foo):
-      sys.stdout.write('%s\n' % url)
+    loc = ParseLocation(geo_string)
+    if loc.matches():
+      print_location(loc.best_match())
+    else:
+      sys.stdout.write('No match\n')
 
   sys.exit(0)

@@ -24,11 +24,11 @@ class TestFindNumbers(unittest.TestCase):
 
   def testBasic(self):
     d = decimal.Decimal
-    self.assertEqual(geourl.break_apart('37.618889, -122.375'),
+    break_apart = geourl.ParseLocation('')._break_apart
+    self.assertEqual(break_apart('37.618889, -122.375'),
                      [d('37.618889'), d('-122.375')])
-    # TODO: FIXME: check utf-8 vs other encodings?
     self.assertEqual(
-        geourl.break_apart('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8')),
+        break_apart('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8')),
         [d('37'), d('37'), d('8'), 'N', d('122'), d('22'), d('30'), 'W'])
 
   def testSmokeTest(self):
@@ -72,7 +72,7 @@ class TestFindNumbers(unittest.TestCase):
   def testBestMatch(self):
     # no matches
     match = geourl.find('1 2 3 4 5 6 7'.decode('utf-8'))
-    self.assertEqual(None, match)
+    self.assertEqual(None, match, msg='match was %s' % match)
 
     # Even with the 'z' float at the end, we find the correct entry.
     expected = '37.6188888,-122.375'
@@ -141,7 +141,7 @@ class TestFindNumbers(unittest.TestCase):
 
     # latitude hours cannot have a decimal point
     match = geourl.find('37.000 37 8 N 122 22 30 W')
-    self.assertTrue(match is None)
+    self.assertTrue(match is None, msg='match was %s' % match)
 
     # latitude hours cannot have a decimal point
     match = geourl.find('37.000° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
