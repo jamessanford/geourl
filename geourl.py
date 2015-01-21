@@ -111,7 +111,7 @@ class Pattern(object):
         # TODO: really should 'autosave' each element into 'state'.
         self.element = elements[offset]
         testfunc()
-      except (IndexError, PatternFail), e:
+      except (IndexError, PatternFail):
         return False
     self.finish(self.pattern_type)
 
@@ -263,11 +263,11 @@ class ParseLocation(object):
 
   def _break_apart(self, geo_string):
     elements = []
-    for m in re.finditer('([a-z]+)|(-?[0-9]+\.?[0-9]*)', geo_string, re.I):
+    for m in re.finditer(r'([a-z]+)|(-?[0-9]+\.?[0-9]*)', geo_string, re.I):
       element = m.group()
-      if re.match('^([nsew]|north|south|west|east)$', element, re.I):
+      if re.match(r'^([nsew]|north|south|west|east)$', element, re.I):
         elements.append(element)
-      elif re.match('^(-?[0-9]+\.?[0-9]*)$', element):
+      elif re.match(r'^(-?[0-9]+\.?[0-9]*)$', element):
         elements.append(decimal.Decimal(element))
     return elements
 
@@ -312,10 +312,10 @@ def find(geo_string):
   return loc.best_match()
 
 
-def print_location(foo):
+def print_location(loc):
   for template in OUTPUT:
     sys.stdout.write('%s\n' %
-                     template.format(lat=foo.latitude, lon=foo.longitude))
+                     template.format(lat=loc.latitude, lon=loc.longitude))
 
 
 # TODO: output display class with templates at the top
