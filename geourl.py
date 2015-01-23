@@ -65,7 +65,7 @@ OUTPUT = (
   'http://www.panoramio.com/map/#lt={lat}&ln={lon}&z=3&k=2&a=1&tab=1&pl=all',
   'http://labs.strava.com/heatmap/#13/{lon}/{lat}/gray/both',
   'http://bing.com/maps/default.aspx?cp={lat}~{lon}&lvl=14',
-  'http://here.com/{lat},{lon},15,0,0,normal.day',
+  'https://here.com/?map={lat},{lon},16,normal',
   'http://tools.wmflabs.org/geohack/geohack.php?params={lat};{lon}',
   'https://www.google.com/maps/@{lat},{lon},16z'
 )
