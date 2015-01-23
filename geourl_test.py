@@ -193,7 +193,7 @@ class TestBulkURLs(unittest.TestCase):
     decimal.getcontext().prec = 9
 
   def testBulkURLs(self):
-# expected_latitide,expected_longitude | url
+# expected_latitude,expected_longitude | url
     urls = """
 37.618889,-122.375 | 37.618889, -122.375
 None | nothing here

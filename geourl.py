@@ -82,10 +82,9 @@ class Pattern(object):
     pattern_type:
       'compass' or 'degrees': type of input pattern
     definition:
-      pattern definition, a string containing a the test function name
+      pattern definition, a string containing the test function name
                           for each element of the pattern
     """
-
     self.pattern_type = pattern_type
     self.definition = definition
     self.funcs = []      # List of functions to test each element against.
@@ -321,9 +320,8 @@ def print_location(loc):
                      template.format(lat=loc.latitude, lon=loc.longitude))
 
 
-# TODO: output display class with templates at the top
-# repl mode that waits for 200ms of silence before showing answers
-# (to help output with multiline pastes)
+# TODO: repl mode that waits for 200ms of silence before showing answers
+#       (to help output with multiline pastes)
 
 
 if __name__ == '__main__':
