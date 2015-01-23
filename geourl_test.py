@@ -5,7 +5,7 @@ import decimal
 import unittest
 import geourl
 
-# TODO: FIXME: check extra zeroes at the end, ie '123.40000', should strip('0')?
+# TODO: check extra zeroes at the end, '123.40000', should strip('0')?
 
 
 class TestFindNumbers(unittest.TestCase):
@@ -114,15 +114,25 @@ class TestFindNumbers(unittest.TestCase):
     self.assertEqual('-17.55232', str(match.latitude))
     self.assertEqual('-69.0249278', str(match.longitude))
 
-  # TODO FIXME
-  def testWest(self):
-    pass  # 'W' is -
-  def testEast(self):
-    pass  # 'E' is +
   def testNorth(self):
-    pass  # 'N' is +
+    # 'N' is +
+    match = geourl.find('2 3 9 N 1 3 9 W')
+    self.assertEqual(str(match.latitude), '2.0525')
+
   def testSouth(self):
-    pass  # 'S' is -
+    # 'S' is -
+    match = geourl.find('2 3 9 S 1 3 9 W')
+    self.assertEqual(str(match.latitude), '-2.0525')
+
+  def testEast(self):
+    # 'E' is +
+    match = geourl.find('2 3 9 N 1 3 9 E')
+    self.assertEqual(str(match.longitude), '1.0525')
+
+  def testWest(self):
+    # 'W' is -
+    match = geourl.find('2 3 9 N 1 3 9 W')
+    self.assertEqual(str(match.longitude), '-1.0525')
 
   def testCompassMinuteDecimal(self):
     match = geourl.find('N 38 43.91 W 123 59.37')
