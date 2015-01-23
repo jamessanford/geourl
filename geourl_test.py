@@ -213,11 +213,14 @@ None | nothing here
       expected, url = (i.strip() for i in line.split('|'))
       match = geourl.find(url)
       if expected == 'None':
-        self.assertTrue(match is None)
+        self.assertTrue(match is None,
+                        msg='Expected None, got "{}"'.format(match))
       else:
-        self.assertTrue(match is not None, msg='None result for "{}"'.format(url))
+        self.assertTrue(match is not None,
+                        msg='None result for "{}"'.format(url))
         result = '{},{}'.format(match.latitude,match.longitude)
-        fail_msg = 'url "{}" expected "{}", result: "{}"'.format(url, expected, result)
+        fail_msg = 'url "{}" expected "{}", result: "{}"'.format(
+                     url, expected, result)
         self.assertEqual(expected, result, msg=fail_msg)
       tested_url_count += 1
 
