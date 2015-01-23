@@ -209,7 +209,7 @@ None | nothing here
 
     tested_url_count = 0
 
-    for line in filter(lambda item: item, urls.split('\n')):
+    for line in (url for url in urls.splitlines() if url):
       expected, url = (i.strip() for i in line.split('|'))
       match = geourl.find(url)
       if expected == 'None':
@@ -218,7 +218,7 @@ None | nothing here
       else:
         self.assertTrue(match is not None,
                         msg='None result for "{}"'.format(url))
-        result = '{},{}'.format(match.latitude,match.longitude)
+        result = '{},{}'.format(match.latitude, match.longitude)
         fail_msg = 'url "{}" expected "{}", result: "{}"'.format(
                      url, expected, result)
         self.assertEqual(expected, result, msg=fail_msg)
