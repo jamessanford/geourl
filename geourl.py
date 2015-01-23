@@ -5,7 +5,7 @@
 
 Example usage:
 geourl '30°34′15″N 104°3′38″E'
-geourl 49.440603,11.004759
+geourl 27.175015,78.042155
 geourl 'https://www.google.com/maps/@45.876349,9.655686,10z'
 
 Example output:
