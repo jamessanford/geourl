@@ -3,15 +3,18 @@
 
 """Given a geolocation url, output other urls that show the same location.
 
-Example inputs:
-30°34′15″N 104°3′38″E
-49.440603,11.004759
-https://www.google.com/maps/@45.876349,9.655686,10z
+Example usage:
+geourl '30°34′15″N 104°3′38″E'
+geourl 49.440603,11.004759
+geourl 'https://www.google.com/maps/@45.876349,9.655686,10z'
 
-Example outputs:
-http://wikimapia.org/#lang=en&lat=37.491400&lon=-122.211000&z=10&m=b
-http://hikebikemap.org/?zoom=12&lat=50.95942&lon=14.1342&layers=B0000FFFFF
-http://labs.strava.com/heatmap/#13/-122.30854/37.50493/gray/both
+Example output:
+30.5708334,104.060556
+http://wikimapia.org/#lat=30.5708334&lon=104.060556&z=12&m=b
+http://hikebikemap.org/?zoom=12&lat=30.5708334&lon=104.060556&layers=B0000FFFFF
+http://www.openstreetmap.org/#map=14/30.5708334/104.060556
+http://labs.strava.com/heatmap/#13/104.060556/30.5708334/gray/both
+[...]
 """
 
 import decimal
