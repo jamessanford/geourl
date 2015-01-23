@@ -64,7 +64,7 @@ OUTPUT = (
   'http://www.openstreetmap.org/#map=14/{lat}/{lon}',
   'http://www.panoramio.com/map/#lt={lat}&ln={lon}&z=3&k=2&a=1&tab=1&pl=all',
   'http://labs.strava.com/heatmap/#13/{lon}/{lat}/gray/both',
-  'http://www.bing.com/maps/#BASE64(cp={lat}~{lon}&lvl=16&q={lat},{lon})',
+  'http://bing.com/maps/default.aspx?cp={lat}~{lon}&lvl=14',
   'http://here.com/{lat},{lon},15,0,0,normal.day',
   'http://tools.wmflabs.org/geohack/geohack.php?params={lat};{lon}',
   'https://www.google.com/maps/@{lat},{lon},16z'
