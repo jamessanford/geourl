@@ -27,7 +27,7 @@ ARGS = argparse.ArgumentParser(description='Translate geo location urls '
                                            'into other destination urls.')
 ARGS.add_argument('geo_string', nargs='+', metavar='<geo url>',
                   help='geo location url or string')
-ARGS.add_argument('-a, --all', dest='all', action='store_true',
+ARGS.add_argument('-a', '--all', dest='all', action='store_true',
                   help='show all matches (where confidence > 0)')
 # TODO: arg to force lon/lat instead of lat/lon pattern.
 # TODO: accept some basic geocoding for place names? wikipedia/wikimapia lookup?
