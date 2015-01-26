@@ -215,6 +215,7 @@ None | nothing here
 31.2,121.5|Shanghai 31°12′N 121°30′E
 31.2083333,121.508333|Near Shanghai 31°12.5′N 121°30.5′E
 -23.55,-46.6333333|23°33′S 46°38′W São Paulo
+30.4461,-97.6239|30.4461° N, 97.6239° W Pflugerville GPS coordinates search
 """
 
     tested_url_count = 0

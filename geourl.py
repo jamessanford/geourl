@@ -52,8 +52,9 @@ PATTERNS = (
 
   ('.', 'degrees', 'lat_dec lon_dec'),
 
-  # an uncommon notation where NSEW keyword can set negative degrees
-  ('.', 'degrees', 'north_south lat_dec east_west lon_dec')
+  # notation where NSEW keyword can set negative degrees
+  ('.', 'degrees', 'north_south lat_dec east_west lon_dec'),
+  ('.', 'degrees', 'lat_dec north_south lon_dec east_west'),
 )
 
 
