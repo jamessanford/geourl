@@ -327,11 +327,11 @@ def print_location(loc):
 #       (to help output with multiline pastes)
 
 
-if __name__ == '__main__':
+def main(args):
   format = '%(filename)s:%(lineno)d %(levelname)s: %(message)s'
   logging.basicConfig(format=format, level=logging.ERROR)
 
-  if len(sys.argv) == 1:
+  if len(args) == 1:
     # Force full help output when run without args.
     ARGS.print_help()
     ARGS.exit(2, '\nerror: no geo locations given\n')
@@ -354,4 +354,8 @@ if __name__ == '__main__':
     else:
       print_location(loc.best_match())
 
-  sys.exit(exit_code)
+  return exit_code
+
+
+if __name__ == '__main__':
+  sys.exit(main(sys.argv))
