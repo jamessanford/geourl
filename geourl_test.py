@@ -184,6 +184,12 @@ class TestFindNumbers(unittest.TestCase):
                 '22º52\'46" de latitude SOUTH 42º01\'07" de longitude WEST')
     self.assertEqual(str(match), '-22.8794445,-42.0186111')
 
+  def testIssue1(self):
+    # was incorrectly parsed as 'compass' instead of 'degrees'
+    # https://github.com/jamessanford/geourl/issues/1
+    match = geourl.find('https://www.google.com/maps/@34.0361588,-118.2402722,3a,75y,115.29h,82.56t/data=!3m6!1e1!3m4!1s6SqguJ4b-kUNfCPaKdxUPg!2e0!7i13312!8i6656!6m1!1e1')
+    self.assertEqual(str(match), '34.0361588,-118.2402722')
+
 
 class TestBulkURLs(unittest.TestCase):
   def setUp(self):
