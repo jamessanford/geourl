@@ -1,4 +1,4 @@
-###Given a geolocation url, output other urls that show the same location.
+### Given a geolocation url, output other urls that show the same location.
 
 Ever find yourself looking at Google Maps but want to see the same location in Wikimapia or Panoramio?  This is your tool.
 
