@@ -5,7 +5,7 @@ import decimal
 import unittest
 import geourl
 
-# TODO: check extra zeroes at the end, '123.40000', should strip('0')?
+# TODO: check extra zeroes at the end, ie '123.40000', should strip('0')?
 
 
 class TestFindNumbers(unittest.TestCase):
@@ -28,16 +28,16 @@ class TestFindNumbers(unittest.TestCase):
     self.assertEqual(break_apart('37.618889, -122.375'),
                      [d('37.618889'), d('-122.375')])
     self.assertEqual(
-        break_apart('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8')),
+        break_apart('37° 37′ 8″ N, 122° 22′ 30″ W'),
         [d('37'), d('37'), d('8'), 'N', d('122'), d('22'), d('30'), 'W'])
 
   def testSmokeTest(self):
     # No crashing allowed.
-    geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
-    geourl.find('1 2 3 4 5 6 7'.decode('utf-8'))
-    geourl.find('37.6188888, -122.375 z=3.0'.decode('utf-8'))
-    geourl.find('37.6188888, -12.375 z=3.00'.decode('utf-8'))
-    geourl.find('37.6188888, -12.375 z=3.0000'.decode('utf-8'))
+    geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W')
+    geourl.find('1 2 3 4 5 6 7')
+    geourl.find('37.6188888, -122.375 z=3.0')
+    geourl.find('37.6188888, -12.375 z=3.00')
+    geourl.find('37.6188888, -12.375 z=3.0000')
 
   def testSignedDecimal(self):
     match = geourl.find('49.440603,11.004759')
@@ -71,7 +71,7 @@ class TestFindNumbers(unittest.TestCase):
 
   def testBestMatch(self):
     # no matches
-    match = geourl.find('1 2 3 4 5 6 7'.decode('utf-8'))
+    match = geourl.find('1 2 3 4 5 6 7')
     self.assertEqual(None, match, msg='match was %s' % match)
 
     # Even with the 'z' float at the end, we find the correct entry.
@@ -95,7 +95,7 @@ class TestFindNumbers(unittest.TestCase):
     self.assertEqual(str(match), '37.4969444,122.240277')
 
   def testCompass(self):
-    match = geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
+    match = geourl.find('37° 37′ 8″ N, 122° 22′ 30″ W')
     self.assertEqual('37.6188889', str(match.latitude))
     self.assertEqual('-122.375000', str(match.longitude))
 
@@ -138,7 +138,7 @@ class TestFindNumbers(unittest.TestCase):
     match = geourl.find('N 38 43.91 W 123 59.37')
     self.assertEqual(str(match), '38.7318334,-123.989500')
 
-    match = geourl.find('N38°43.91\' W123°59.37\''.decode('utf-8'))
+    match = geourl.find('N38°43.91\' W123°59.37\'')
     self.assertEqual(str(match), '38.7318334,-123.989500')
 
     match = geourl.find('38,43.91N 123,59.37W')
@@ -154,7 +154,7 @@ class TestFindNumbers(unittest.TestCase):
     self.assertTrue(match is None, msg='match was %s' % match)
 
     # latitude hours cannot have a decimal point
-    match = geourl.find('37.000° 37′ 8″ N, 122° 22′ 30″ W'.decode('utf-8'))
+    match = geourl.find('37.000° 37′ 8″ N, 122° 22′ 30″ W')
     self.assertTrue(match is None, msg='match was %s' % match)
 
   def testBestGuess(self):
