@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding=utf-8
 
 """Given a geolocation url, output other urls that show the same location.
@@ -165,7 +165,7 @@ class Pattern(object):
       # TODO: words, placement of a comma between the two, 'similar length', ...
 
   def assertStringElement(self):
-    if not isinstance(self.element, basestring):
+    if not isinstance(self.element, str):
       raise PatternFail('Not string')
 
   def assertDecimalElement(self):
@@ -283,14 +283,14 @@ class ParseLocation(object):
     elements = self._break_apart(geo_string)
     for pattern_re, pattern_type, pattern_definition in PATTERNS:
       if re.search(pattern_re, geo_string):
-        for element_start in xrange(len(elements)):
+        for element_start in range(len(elements)):
 
           # This is a bit wonky, our pattern object stores the state.
           pattern = Pattern(pattern_type, pattern_definition)
           if pattern.matches(elements[element_start:]):
             self.result.append(pattern)
 
-    self.result.sort(cmp=lambda x, y: cmp(y.confidence, x.confidence))
+    self.result.sort(key=lambda x: x.confidence, reverse=True)
 
   def best_match(self):
     if not self.result:
@@ -319,8 +319,7 @@ def find(geo_string):
 
 def print_location(loc):
   for template in OUTPUT:
-    sys.stdout.write('%s\n' %
-                     template.format(lat=loc.latitude, lon=loc.longitude))
+    print(template.format(lat=loc.latitude, lon=loc.longitude))
 
 
 # TODO: repl mode that waits for 200ms of silence before showing answers
@@ -350,6 +349,7 @@ def main(args):
     elif args.all:
       for result in loc.matches():
         if result.confidence > 0:
+          print('confidence:{} '.format(result.confidence), end='')
           print_location(result)
     else:
       print_location(loc.best_match())
