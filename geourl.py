@@ -41,10 +41,12 @@ log = logging.getLogger('geourl')
 # Look inside that sequence for the below patterns.
 # The pattern definition keywords (lat_h, lat_dec) are names of functions,
 # those functions store an element or fail the sequence.
+#
 # If a pattern completes successfully, finish() is called to store the result.
 PATTERNS = (
   # lat/long are reversed
   ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),
+  ('strava.com', 'degrees', 'lon_dec lat_dec'),
 
   ('.', 'compass', 'north_south lat_h lat_m lat_s east_west lon_h lon_m lon_s'),
   ('.', 'compass', 'lat_h lat_m lat_s north_south lon_h lon_m lon_s east_west'),
@@ -62,15 +64,21 @@ PATTERNS = (
 
 OUTPUT = (
   '{lat},{lon}',
-  'http://wikimapia.org/#lat={lat}&lon={lon}&z=12&m=b',
-  'http://hikebikemap.org/?zoom=12&lat={lat}&lon={lon}&layers=B0000FFFFF',
-  'http://www.openstreetmap.org/#map=14/{lat}/{lon}',
-  'http://www.panoramio.com/map/#lt={lat}&ln={lon}&z=3&k=2&a=1&tab=1&pl=all',
-  'http://labs.strava.com/heatmap/#13/{lon}/{lat}/gray/both',
-  'http://bing.com/maps/default.aspx?cp={lat}~{lon}&lvl=14',
+  'https://wikimapia.org/#lat={lat}&lon={lon}&z=12&m=b',
+  'https://hikebikemap.org/?zoom=12&lat={lat}&lon={lon}&layers=B0000FFFFF',
+  'https://www.openstreetmap.org/#map=14/{lat}/{lon}',
+  'https://www.panoramio.com/map/#lt={lat}&ln={lon}&z=3&k=2&a=1&tab=1&pl=all',
+  'https://labs.strava.com/heatmap/#13/{lon}/{lat}/gray/both',
+  'https://bing.com/maps/default.aspx?cp={lat}~{lon}&lvl=14',
   'https://here.com/?map={lat},{lon},16,normal',
-  'http://tools.wmflabs.org/geohack/geohack.php?params={lat};{lon}',
-  'https://www.google.com/maps/@{lat},{lon},16z'
+  'https://www.google.com/maps/@{lat},{lon},16z',
+  'https://wiki-map.com/map/?locale=en&lat={lat}&lng={lon}',
+  'https://geohack.toolforge.org/geohack.php?params={lat};{lon}',
+  'https://ngmdb.usgs.gov/topoview/viewer/#15/{lat}/{lon}',
+  'https://www.flickr.com/search/?lat={lat}&lon={lon}&radius=0.50&has_geo=1&view_all=1&sort=interestingness-desc',
+  'https://explore.osmaps.com/?lat={lat}&lon={lon}&zoom=13.0000&style=Standard&type=2d',
+  'https://wikimap.wiki/?base=map&lat={lat}&lon={lon}&showAll=true&wiki=enwiki&zoom=15',
+  'https://openinframap.org/#9/{lat}/{lon}'
 )
 
 
