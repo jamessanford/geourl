@@ -22,6 +22,7 @@ import re
 import sys
 import argparse
 import logging
+import urllib.parse
 
 ARGS = argparse.ArgumentParser(description='Translate geo location urls '
                                            'into other destination urls.')
@@ -272,6 +273,9 @@ class Pattern(object):
 class ParseLocation(object):
   def __init__(self, geo_string):
     self.result = []
+
+    # input is likely a URL, remove URL quoting.
+    geo_string = urllib.parse.unquote(geo_string)
 
     self.apply_patterns(geo_string)
 

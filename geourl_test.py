@@ -184,6 +184,10 @@ class TestFindNumbers(unittest.TestCase):
                 '22º52\'46" de latitude SOUTH 42º01\'07" de longitude WEST')
     self.assertEqual(str(match), '-22.8794445,-42.0186111')
 
+    # The %2C in the URL should get decoded.
+    match = geourl.find('https://www.google.com/maps/d/viewer?mid=1MPCXX&ll=50.3050693%2C18.2569263&z=18')
+    self.assertEqual(str(match), '50.3050693,18.2569263')
+
 
 class TestBulkURLs(unittest.TestCase):
   def setUp(self):
