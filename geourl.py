@@ -78,7 +78,8 @@ OUTPUT = (
   'https://www.flickr.com/search/?lat={lat}&lon={lon}&radius=0.50&has_geo=1&view_all=1&sort=interestingness-desc',
   'https://explore.osmaps.com/?lat={lat}&lon={lon}&zoom=13.0000&style=Standard&type=2d',
   'https://wikimap.wiki/?base=map&lat={lat}&lon={lon}&showAll=true&wiki=enwiki&zoom=15',
-  'https://openinframap.org/#9/{lat}/{lon}'
+  'https://openinframap.org/#9/{lat}/{lon}',
+  'https://www.openrailwaymap.org/?style=standard&lat={lat}&lon={lon}&zoom=13'
 )
 
 
