@@ -23,7 +23,7 @@ import re
 import sys
 import urllib.parse
 from dataclasses import dataclass
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 # The input is broken down into a sequence of numbers and 'NSEW' letters.
 # Look inside that sequence for the below patterns.
@@ -108,7 +108,7 @@ class Coordinate:
 class PatternDefinition:
   """Immutable pattern configuration."""
 
-  def __init__(self, url_regex: str, pattern_type: str, definition: str):
+  def __init__(self, url_regex: str, pattern_type: str, definition: str) -> None:
     self.url_regex = url_regex
     self.pattern_type = pattern_type
     self.definition = definition
@@ -121,10 +121,10 @@ class PatternDefinition:
 class PatternMatcher:
   """Stateless pattern matching against elements."""
 
-  def __init__(self, pattern_def: PatternDefinition):
+  def __init__(self, pattern_def: PatternDefinition) -> None:
     self.pattern_def = pattern_def
 
-  def match(self, elements: List[Union[str, decimal.Decimal]], start_offset: int = 0) -> Optional[PatternState]:
+  def match(self, elements: list[Union[str, decimal.Decimal]], start_offset: int = 0) -> Optional[PatternState]:
     """Try to match pattern against elements starting at offset.
 
     Returns extracted values dict if successful, None otherwise.
@@ -298,12 +298,12 @@ class CoordinateBuilder:
 
 
 class ParseLocation:
-  def __init__(self, geo_string: str):
-    self.result: List[Coordinate] = []
+  def __init__(self, geo_string: str) -> None:
+    self.result: list[Coordinate] = []
     self.apply_patterns(urllib.parse.unquote(geo_string))
 
-  def _break_apart(self, geo_string: str) -> List[Union[str, decimal.Decimal]]:
-    elements: List[Union[str, decimal.Decimal]] = []
+  def _break_apart(self, geo_string: str) -> list[Union[str, decimal.Decimal]]:
+    elements: list[Union[str, decimal.Decimal]] = []
     for m in re.finditer(r'([a-z]+)|(-?[0-9]+\.?[0-9]*)', geo_string, re.IGNORECASE):
       element = m.group()
       if re.match(REGEX_KNOWN_WORDS, element, re.IGNORECASE):
@@ -335,7 +335,7 @@ class ParseLocation:
       return None
     return self.result[0]
 
-  def matches(self) -> List[Coordinate]:
+  def matches(self) -> list[Coordinate]:
     if not self.result or self.result[0].confidence == 0:
       return []
     return self.result
@@ -358,7 +358,7 @@ def print_location(loc: Coordinate) -> None:
 #       (to help output with multiline pastes)
 
 
-def main(args: List[str]) -> int:
+def main(args: list[str]) -> int:
   # NOTE: precision is open to discussion.
   decimal.getcontext().prec = 9
 
