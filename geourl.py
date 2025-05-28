@@ -26,8 +26,6 @@ import urllib.parse
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Any, Tuple, Union
 
-PatternState = Dict[str, Any]
-
 # The input is broken down into a sequence of numbers and 'NSEW' letters.
 # Look inside that sequence for the below patterns.
 # The pattern definition keywords (lat_h, lat_dec) are names of validator methods,
@@ -72,6 +70,14 @@ OUTPUT = (
   'https://openinframap.org/#9/{lat}/{lon}',
   'https://www.openrailwaymap.org/?style=standard&lat={lat}&lon={lon}&zoom=13'
 )
+
+
+REGEX_KNOWN_WORDS = r'^([nsew]|north|south|west|east|nord|sur|norte|sul|est|ouest|este|oeste)$'
+WORDS_N_NORTH_ELSE_SOUTH = ['n', 's', 'north', 'south', 'nord', 'sur', 'norte', 'sul']
+WORDS_E_EAST_ELSE_WEST = ['e', 'w', 'east', 'west', 'est', 'ouest', 'este', 'oeste']
+
+
+PatternState = Dict[str, Any]
 
 
 class PatternFail(Exception):
@@ -154,15 +160,15 @@ class PatternMatcher:
 
   def north_south(self, element: Any, state: PatternState) -> None:
     s = self._assert_string(element).lower()
-    if s in ['n', 's', 'north', 'south']:
-      state['ns'] = s[0]
+    if s in WORDS_N_NORTH_ELSE_SOUTH:
+      state['ns'] = 'n' if s[0] in 'n' else 's'
     else:
       raise PatternFail('Not North/South')
 
   def east_west(self, element: Any, state: PatternState) -> None:
     s = self._assert_string(element).lower()
-    if s in ['e', 'w', 'east', 'west']:
-      state['ew'] = s[0]
+    if s in WORDS_E_EAST_ELSE_WEST:
+      state['ew'] = 'e' if s[0] in 'e' else 'w'
     else:
       raise PatternFail('Not East/West')
 
@@ -297,7 +303,7 @@ class ParseLocation:
     elements: List[Union[str, decimal.Decimal]] = []
     for m in re.finditer(r'([a-z]+)|(-?[0-9]+\.?[0-9]*)', geo_string, re.I):
       element = m.group()
-      if re.match(r'^([nsew]|north|south|west|east)$', element, re.I):
+      if re.match(REGEX_KNOWN_WORDS, element, re.I):
         elements.append(element)
       elif re.match(r'^(-?[0-9]+\.?[0-9]*)$', element):
         elements.append(decimal.Decimal(element))
