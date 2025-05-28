@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# coding=utf-8
 
 """Given a geolocation url, output other urls that show the same location.
 
@@ -17,19 +16,19 @@ http://labs.strava.com/heatmap/#13/104.060556/30.5708334/gray/both
 [...]
 """
 
+import argparse
 import decimal
+import logging
 import re
 import sys
-import argparse
-import logging
 import urllib.parse
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any, Tuple, Union
+from typing import Any, List, Optional, Union
 
 # The input is broken down into a sequence of numbers and 'NSEW' letters.
 # Look inside that sequence for the below patterns.
-# The pattern definition keywords (lat_h, lat_dec) are names of validator methods,
-# those methods validate an element or fail the sequence.
+# The pattern definition keywords (lat_h, lat_dec) are names of PatternMatcher methods
+# which validate an element or fail the sequence.
 #
 # If a pattern completes successfully, a coordinate is built from the extracted values.
 PATTERNS = (
@@ -68,7 +67,7 @@ OUTPUT = (
   'https://explore.osmaps.com/?lat={lat}&lon={lon}&zoom=13.0000&style=Standard&type=2d',
   'https://wikimap.wiki/?base=map&lat={lat}&lon={lon}&showAll=true&wiki=enwiki&zoom=15',
   'https://openinframap.org/#9/{lat}/{lon}',
-  'https://www.openrailwaymap.org/?style=standard&lat={lat}&lon={lon}&zoom=13'
+  'https://www.openrailwaymap.org/?style=standard&lat={lat}&lon={lon}&zoom=13',
 )
 
 
@@ -77,16 +76,22 @@ WORDS_N_NORTH_ELSE_SOUTH = ['n', 's', 'north', 'south', 'nord', 'sur', 'norte', 
 WORDS_E_EAST_ELSE_WEST = ['e', 'w', 'east', 'west', 'est', 'ouest', 'este', 'oeste']
 
 
-PatternState = Dict[str, Any]
+PatternState = dict[str, Any]
 
 
 class PatternFail(Exception):
   pass
 
 
+class PatternRangeError(PatternFail):
+    def __init__(self) -> None:
+        super().__init__('Value out of range')
+
+
 @dataclass
 class Coordinate:
   """Represents a geographic coordinate with confidence score."""
+
   latitude: str
   longitude: str
   confidence: int = 0
@@ -140,7 +145,6 @@ class PatternMatcher:
 
     return state
 
-  # Validator methods
   def _assert_string(self, element: Any) -> str:
     if not isinstance(element, str):
       raise PatternFail('Not string')
@@ -175,25 +179,25 @@ class PatternMatcher:
   def lat_h(self, element: Any, state: PatternState) -> None:
     dec = self._assert_integer(element)
     if dec < 0 or dec >= 90:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     state['lat_h'] = dec
 
   def lat_m(self, element: Any, state: PatternState) -> None:
     dec = self._assert_integer(element)
     if dec < 0 or dec >= 60:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     state['lat_m'] = dec
 
   def lat_s(self, element: Any, state: PatternState) -> None:
     dec = self._assert_decimal(element)
     if dec < 0 or dec >= 60:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     state['lat_s'] = dec
 
   def lat_m_dec(self, element: Any, state: PatternState) -> None:
     dec = self._assert_decimal(element)
     if dec < 0 or dec >= 60:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     minutes = dec.to_integral(rounding=decimal.ROUND_DOWN)
     state['lat_m'] = minutes
     state['lat_s'] = (dec - minutes) * 60
@@ -201,25 +205,25 @@ class PatternMatcher:
   def lon_h(self, element: Any, state: PatternState) -> None:
     dec = self._assert_integer(element)
     if dec < 0 or dec >= 180:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     state['lon_h'] = dec
 
   def lon_m(self, element: Any, state: PatternState) -> None:
     dec = self._assert_integer(element)
     if dec < 0 or dec >= 60:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     state['lon_m'] = dec
 
   def lon_s(self, element: Any, state: PatternState) -> None:
     dec = self._assert_decimal(element)
     if dec < 0 or dec >= 60:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     state['lon_s'] = dec
 
   def lon_m_dec(self, element: Any, state: PatternState) -> None:
     dec = self._assert_decimal(element)
     if dec < 0 or dec >= 60:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     minutes = dec.to_integral(rounding=decimal.ROUND_DOWN)
     state['lon_m'] = minutes
     state['lon_s'] = (dec - minutes) * 60
@@ -227,13 +231,13 @@ class PatternMatcher:
   def lat_dec(self, element: Any, state: PatternState) -> None:
     dec = self._assert_decimal(element)
     if dec < -90 or dec >= 90:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     state['lat_dec'] = dec
 
   def lon_dec(self, element: Any, state: PatternState) -> None:
     dec = self._assert_decimal(element)
     if dec <= -180 or dec >= 180:
-      raise PatternFail('out of range')
+      raise PatternRangeError
     state['lon_dec'] = dec
 
 
@@ -243,7 +247,6 @@ class CoordinateBuilder:
   @staticmethod
   def build(pattern_def: PatternDefinition, values: PatternState) -> Coordinate:
     """Convert extracted values to a Coordinate based on pattern type."""
-
     if pattern_def.pattern_type == 'compass':
       latitude = (values['lat_h'] +
                   (values['lat_m'] / 60) +
@@ -282,7 +285,7 @@ class CoordinateBuilder:
       longitude=str(longitude),
       confidence=confidence,
       pattern_type=pattern_def.pattern_type,
-      pattern_definition=pattern_def.definition
+      pattern_definition=pattern_def.definition,
     )
 
   @staticmethod
@@ -301,9 +304,9 @@ class ParseLocation:
 
   def _break_apart(self, geo_string: str) -> List[Union[str, decimal.Decimal]]:
     elements: List[Union[str, decimal.Decimal]] = []
-    for m in re.finditer(r'([a-z]+)|(-?[0-9]+\.?[0-9]*)', geo_string, re.I):
+    for m in re.finditer(r'([a-z]+)|(-?[0-9]+\.?[0-9]*)', geo_string, re.IGNORECASE):
       element = m.group()
-      if re.match(REGEX_KNOWN_WORDS, element, re.I):
+      if re.match(REGEX_KNOWN_WORDS, element, re.IGNORECASE):
         elements.append(element)
       elif re.match(r'^(-?[0-9]+\.?[0-9]*)$', element):
         elements.append(decimal.Decimal(element))
@@ -311,7 +314,6 @@ class ParseLocation:
 
   def apply_patterns(self, geo_string: str) -> None:
     """Try all patterns at all offsets, sort by confidence."""
-
     elements = self._break_apart(geo_string)
 
     for url_regex, pattern_type, definition in PATTERNS:
@@ -329,20 +331,14 @@ class ParseLocation:
     self.result.sort(key=lambda x: x.confidence, reverse=True)
 
   def best_match(self) -> Optional[Coordinate]:
-    if not self.result:
+    if not self.result or self.result[0].confidence == 0:
       return None
-    elif self.result[0].confidence == 0:
-      return None
-    else:
-      return self.result[0]
+    return self.result[0]
 
   def matches(self) -> List[Coordinate]:
-    if not self.result:
+    if not self.result or self.result[0].confidence == 0:
       return []
-    elif self.result[0].confidence == 0:
-      return []
-    else:
-      return self.result
+    return self.result
 
 
 # Used by unit tests.
@@ -363,6 +359,9 @@ def print_location(loc: Coordinate) -> None:
 
 
 def main(args: List[str]) -> int:
+  # NOTE: precision is open to discussion.
+  decimal.getcontext().prec = 9
+
   format = '%(filename)s:%(lineno)d %(levelname)s: %(message)s'
   logging.basicConfig(format=format, level=logging.ERROR)
 
@@ -379,10 +378,8 @@ def main(args: List[str]) -> int:
     # Force full help output when run without args.
     ARGS.print_help()
     ARGS.exit(2, '\nerror: no geo locations given\n')
-  parsed_args = ARGS.parse_args()
 
-  # NOTE: precision is open to discussion.
-  decimal.getcontext().prec = 9
+  parsed_args = ARGS.parse_args()
 
   exit_code = 0
 
@@ -394,7 +391,7 @@ def main(args: List[str]) -> int:
     elif parsed_args.all:
       for result in loc.matches():
         if result.confidence > 0:
-          print('confidence:{} '.format(result.confidence), end='')
+          print(f'confidence:{result.confidence} ', end='')
           print_location(result)
     else:
       best = loc.best_match()

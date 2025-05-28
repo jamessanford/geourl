@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# coding=utf-8
 
 import decimal
 import unittest
+
 import geourl
 
 # TODO: check extra zeroes at the end, ie '123.40000', should strip('0')?
@@ -165,8 +165,9 @@ class TestFindNumbers(unittest.TestCase):
     self.assertEqual(str(match), '-1.4003,57.007')
 
   def testMultipleMatches(self):
-    match = geourl.find('1.0 2.00 3.00 4.00 5.0 6.0')
     # TODO: unspecified result, could be 2,3 or 3,4
+    match = geourl.find('1.0 2.00 3.00 4.00 5.0 6.0')
+    self.assertTrue(match is not None)
 
   def testFoundInTheWild(self):
     # found on pure-gas.org
@@ -230,13 +231,12 @@ None | nothing here
       match = geourl.find(url)
       if expected == 'None':
         self.assertTrue(match is None,
-                        msg='Expected None, got "{}"'.format(match))
+                        msg=f'Expected None, got "{match}"')
       else:
         self.assertTrue(match is not None,
-                        msg='None result for "{}"'.format(url))
-        result = '{},{}'.format(match.latitude, match.longitude)
-        fail_msg = 'url "{}" expected "{}", result: "{}"'.format(
-                     url, expected, result)
+                        msg=f'None result for "{url}"')
+        result = f'{match.latitude},{match.longitude}'
+        fail_msg = f'url "{url}" expected "{expected}", result: "{result}"'
         self.assertEqual(expected, result, msg=fail_msg)
       tested_url_count += 1
 
