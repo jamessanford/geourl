@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# coding=utf-8
 
 import decimal
 import unittest
+
 import geourl
 
 # TODO: check extra zeroes at the end, ie '123.40000', should strip('0')?
@@ -165,8 +165,9 @@ class TestFindNumbers(unittest.TestCase):
     self.assertEqual(str(match), '-1.4003,57.007')
 
   def testMultipleMatches(self):
-    match = geourl.find('1.0 2.00 3.00 4.00 5.0 6.0')
     # TODO: unspecified result, could be 2,3 or 3,4
+    match = geourl.find('1.0 2.00 3.00 4.00 5.0 6.0')
+    self.assertTrue(match is not None)
 
   def testFoundInTheWild(self):
     # found on pure-gas.org
@@ -183,6 +184,10 @@ class TestFindNumbers(unittest.TestCase):
     match = geourl.find(
                 '22º52\'46" de latitude SOUTH 42º01\'07" de longitude WEST')
     self.assertEqual(str(match), '-22.8794445,-42.0186111')
+
+    # The %2C in the URL should get decoded.
+    match = geourl.find('https://www.google.com/maps/d/viewer?mid=1MPCXX&ll=50.3050693%2C18.2569263&z=18')
+    self.assertEqual(str(match), '50.3050693,18.2569263')
 
 
 class TestBulkURLs(unittest.TestCase):
@@ -216,6 +221,7 @@ None | nothing here
 31.2083333,121.508333|Near Shanghai 31°12.5′N 121°30.5′E
 -23.55,-46.6333333|23°33′S 46°38′W São Paulo
 30.4461,-97.6239|30.4461° N, 97.6239° W Pflugerville GPS coordinates search
+48.8125,2.38472222|fr.wikipedia.org 48° 48′ 45″ nord, 2° 23′ 05″ est
 """
 
     tested_url_count = 0
@@ -225,13 +231,12 @@ None | nothing here
       match = geourl.find(url)
       if expected == 'None':
         self.assertTrue(match is None,
-                        msg='Expected None, got "{}"'.format(match))
+                        msg=f'Expected None, got "{match}"')
       else:
         self.assertTrue(match is not None,
-                        msg='None result for "{}"'.format(url))
-        result = '{},{}'.format(match.latitude, match.longitude)
-        fail_msg = 'url "{}" expected "{}", result: "{}"'.format(
-                     url, expected, result)
+                        msg=f'None result for "{url}"')
+        result = f'{match.latitude},{match.longitude}'
+        fail_msg = f'url "{url}" expected "{expected}", result: "{result}"'
         self.assertEqual(expected, result, msg=fail_msg)
       tested_url_count += 1
 

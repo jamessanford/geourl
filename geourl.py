@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# coding=utf-8
 
 """Given a geolocation url, output other urls that show the same location.
 
@@ -17,32 +16,21 @@ http://labs.strava.com/heatmap/#13/104.060556/30.5708334/gray/both
 [...]
 """
 
+import argparse
 import decimal
+import logging
 import re
 import sys
-import argparse
-import logging
-
-ARGS = argparse.ArgumentParser(description='Translate geo location urls '
-                                           'into other destination urls.')
-ARGS.add_argument('geo_string', nargs='+', metavar='<geo url>',
-                  help='geo location url or string')
-ARGS.add_argument('-a', '--all', dest='all', action='store_true',
-                  help='show all matches (where confidence > 0)')
-# TODO: arg to force lon/lat instead of lat/lon pattern.
-# TODO: accept some basic geocoding for place names? wikipedia/wikimapia lookup?
-
-
-args = None  # ARGS.parse_args()
-log = logging.getLogger('geourl')
-
+import urllib.parse
+from dataclasses import dataclass
+from typing import Any, Optional, Union
 
 # The input is broken down into a sequence of numbers and 'NSEW' letters.
 # Look inside that sequence for the below patterns.
-# The pattern definition keywords (lat_h, lat_dec) are names of functions,
-# those functions store an element or fail the sequence.
+# The pattern definition keywords (lat_h, lat_dec) are names of PatternMatcher methods
+# which validate an element or fail the sequence.
 #
-# If a pattern completes successfully, finish() is called to store the result.
+# If a pattern completes successfully, a coordinate is built from the extracted values.
 PATTERNS = (
   # lat/long are reversed
   ('labs.strava.com', 'degrees', 'lon_dec lat_dec'),
@@ -78,254 +66,290 @@ OUTPUT = (
   'https://www.flickr.com/search/?lat={lat}&lon={lon}&radius=0.50&has_geo=1&view_all=1&sort=interestingness-desc',
   'https://explore.osmaps.com/?lat={lat}&lon={lon}&zoom=13.0000&style=Standard&type=2d',
   'https://wikimap.wiki/?base=map&lat={lat}&lon={lon}&showAll=true&wiki=enwiki&zoom=15',
-  'https://openinframap.org/#9/{lat}/{lon}'
+  'https://openinframap.org/#9/{lat}/{lon}',
+  'https://www.openrailwaymap.org/?style=standard&lat={lat}&lon={lon}&zoom=13',
 )
+
+
+REGEX_KNOWN_WORDS = r'^([nsew]|north|south|west|east|nord|sur|norte|sul|est|ouest|este|oeste)$'
+WORDS_N_NORTH_ELSE_SOUTH = ['n', 's', 'north', 'south', 'nord', 'sur', 'norte', 'sul']
+WORDS_E_EAST_ELSE_WEST = ['e', 'w', 'east', 'west', 'est', 'ouest', 'este', 'oeste']
+
+
+PatternState = dict[str, Any]
 
 
 class PatternFail(Exception):
   pass
 
 
-class Pattern(object):
-  def __init__(self, pattern_type, definition):
-    """A pattern object that can match and convert.
+class PatternRangeError(PatternFail):
+    def __init__(self) -> None:
+        super().__init__('Value out of range')
 
-    pattern_type:
-      'compass' or 'degrees': type of input pattern
-    definition:
-      pattern definition, a string containing the test function name
-                          for each element of the pattern
-    """
+
+@dataclass
+class Coordinate:
+  """Represents a geographic coordinate with confidence score."""
+
+  latitude: str
+  longitude: str
+  confidence: int = 0
+  pattern_type: str = ''
+  pattern_definition: str = ''
+
+  def __str__(self) -> str:
+    return f'{self.latitude},{self.longitude}'
+
+  def __repr__(self) -> str:
+    return f'{self.pattern_type}:"{self.pattern_definition}" {self.latitude},{self.longitude} {self.confidence}'
+
+
+class PatternDefinition:
+  """Immutable pattern configuration."""
+
+  def __init__(self, url_regex: str, pattern_type: str, definition: str) -> None:
+    self.url_regex = url_regex
     self.pattern_type = pattern_type
     self.definition = definition
-    self.funcs = []      # List of functions to test each element against.
-    self.element = None  # The current element being tested by a function.
+    self.validators = definition.split()
 
-    # TODO: This state should be inside 'PatternMatch'
-    self.state = {}  # The functions update this.
-    self.confidence = 0  # higher values are more likely to be a real match
-    self.latitude = None  # string of signed degrees latitude
-    self.longitude = None # string of signed degrees longitude
+  def matches_url(self, url: str) -> bool:
+    return bool(re.search(self.url_regex, url))
 
-    for item in definition.split():
-      self.funcs.append(getattr(self, item))
 
-  def __str__(self):
-    return '{},{}'.format(self.latitude, self.longitude)
+class PatternMatcher:
+  """Stateless pattern matching against elements."""
 
-  def debugstr(self):
-    return '{}:"{}" {},{} {}'.format(self.pattern_type, self.definition,
-                                     self.latitude, self.longitude,
-                                     self.confidence)
+  def __init__(self, pattern_def: PatternDefinition) -> None:
+    self.pattern_def = pattern_def
 
-  def matches(self, elements):
-    for (offset, testfunc) in enumerate(self.funcs):
+  def match(self, elements: list[Union[str, decimal.Decimal]], start_offset: int = 0) -> Optional[PatternState]:
+    """Try to match pattern against elements starting at offset.
+
+    Returns extracted values dict if successful, None otherwise.
+    """
+    state: PatternState = {}
+
+    for i, validator_name in enumerate(self.pattern_def.validators):
       try:
-        # TODO: really should 'autosave' each element into 'state'.
-        self.element = elements[offset]
-        testfunc()
-      except (IndexError, PatternFail):
-        return False
-    self.finish(self.pattern_type)
+        element_index = start_offset + i
+        if element_index >= len(elements):
+          return None
 
-    return True
+        element = elements[element_index]
+        validator = getattr(self, validator_name)
+        validator(element, state)
+      except PatternFail:
+        return None
 
-  def finish(self, pattern_type):
-    # Store output.
-    if pattern_type == 'compass':
-      self.latitude = (self.state['lat_h'] +
-                       (self.state['lat_m'] / 60) +
-                       (self.state['lat_s'] / 60 / 60))
-      if self.state['ns'] == 's':
-        self.latitude *= -1
-      self.longitude = (self.state['lon_h'] +
-                        (self.state['lon_m'] / 60) +
-                        (self.state['lon_s'] / 60 / 60))
-      if self.state['ew'] == 'w':
-        self.longitude *= -1
-    elif pattern_type == 'degrees':
-      # First check for an (uncommon) overriding NSEW designation.
-      if 'ns' in self.state and self.state['ns'] == 's':
-        self.state['lat_dec'] = -1 * abs(self.state['lat_dec'])
-      if 'ew' in self.state and self.state['ew'] == 'w':
-        self.state['lon_dec'] = -1 * abs(self.state['lon_dec'])
+    return state
 
-      self.latitude = str(self.state['lat_dec'])
-      self.longitude = str(self.state['lon_dec'])
-
-    # Update confidence.
-    if pattern_type == 'compass':
-      self.confidence = 1000  # compass patterns are a fairly strict pattern
-    elif pattern_type == 'degrees':
-      # The more specific a number after the decimal point, the more likely
-      # it is to be a coordinate degree.
-      def get_length(num):
-        # TODO: ICK
-        num_str = str(num)
-        offset = num_str.find('.')
-        if offset == -1:
-          return 0
-        else:
-          return len(num_str) - offset + 1
-      self.confidence = (get_length(self.state['lat_dec']) *
-                         get_length(self.state['lon_dec']))
-
-      # TODO: words, placement of a comma between the two, 'similar length', ...
-
-  def assertStringElement(self):
-    if not isinstance(self.element, str):
+  def _assert_string(self, element: Any) -> str:
+    if not isinstance(element, str):
       raise PatternFail('Not string')
+    return element
 
-  def assertDecimalElement(self):
-    if not isinstance(self.element, decimal.Decimal):
+  def _assert_decimal(self, element: Any) -> decimal.Decimal:
+    if not isinstance(element, decimal.Decimal):
       raise PatternFail('Not decimal')
+    return element
 
-  def assertDecimalInteger(self):
-    self.assertDecimalElement()
-    # We only care if there is a decimal point '.' in the text,
-    # regardless of its equivalency when converted to an integer.
-    if '.' in str(self.element):
+  def _assert_integer(self, element: Any) -> decimal.Decimal:
+    dec = self._assert_decimal(element)
+    # We only care if there is a decimal point '.' in the text
+    if '.' in str(element):
       raise PatternFail('Not integer')
+    return dec
 
-  def north_south(self):
-    self.assertStringElement()
-    element = self.element.lower()
-    if element in ['n', 's', 'north', 'south']:
-      self.state['ns'] = element[0]
+  def north_south(self, element: Any, state: PatternState) -> None:
+    s = self._assert_string(element).lower()
+    if s in WORDS_N_NORTH_ELSE_SOUTH:
+      state['ns'] = 'n' if s[0] in 'n' else 's'
     else:
       raise PatternFail('Not North/South')
 
-  def east_west(self):
-    self.assertStringElement()
-    element = self.element.lower()
-    if element in ['e', 'w', 'east', 'west']:
-      self.state['ew'] = element[0]
+  def east_west(self, element: Any, state: PatternState) -> None:
+    s = self._assert_string(element).lower()
+    if s in WORDS_E_EAST_ELSE_WEST:
+      state['ew'] = 'e' if s[0] in 'e' else 'w'
     else:
       raise PatternFail('Not East/West')
 
-  def lat_h(self):
-    self.assertDecimalInteger()
-    if self.element < 0 or self.element > 90:
-      raise PatternFail('out of range')
-    self.state['lat_h'] = self.element
+  def lat_h(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_integer(element)
+    if dec < 0 or dec >= 90:
+      raise PatternRangeError
+    state['lat_h'] = dec
 
-  def lat_m(self):
-    self.assertDecimalInteger()
-    if self.element < 0 or self.element > 60:
-      raise PatternFail('out of range')
-    self.state['lat_m'] = self.element
+  def lat_m(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_integer(element)
+    if dec < 0 or dec >= 60:
+      raise PatternRangeError
+    state['lat_m'] = dec
 
-  def lat_s(self):
-    self.assertDecimalElement()
-    if self.element < 0 or self.element > 60:
-      raise PatternFail('out of range')
-    self.state['lat_s'] = self.element
+  def lat_s(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_decimal(element)
+    if dec < 0 or dec >= 60:
+      raise PatternRangeError
+    state['lat_s'] = dec
 
-  def lat_m_dec(self):
-    self.assertDecimalElement()
-    if self.element < 0 or self.element > 60:
-      raise PatternFail('out of range')
-    minutes = self.element.to_integral(rounding=decimal.ROUND_DOWN)
-    self.state['lat_m'] = minutes
-    self.state['lat_s'] = (self.element - minutes) * 60
+  def lat_m_dec(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_decimal(element)
+    if dec < 0 or dec >= 60:
+      raise PatternRangeError
+    minutes = dec.to_integral(rounding=decimal.ROUND_DOWN)
+    state['lat_m'] = minutes
+    state['lat_s'] = (dec - minutes) * 60
 
-  def lon_h(self):
-    self.assertDecimalInteger()
-    if self.element < 0 or self.element > 180:
-      raise PatternFail('out of range')
-    self.state['lon_h'] = self.element
+  def lon_h(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_integer(element)
+    if dec < 0 or dec >= 180:
+      raise PatternRangeError
+    state['lon_h'] = dec
 
-  def lon_m(self):
-    self.assertDecimalInteger()
-    if self.element < 0 or self.element > 60:
-      raise PatternFail('out of range')
-    self.state['lon_m'] = self.element
+  def lon_m(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_integer(element)
+    if dec < 0 or dec >= 60:
+      raise PatternRangeError
+    state['lon_m'] = dec
 
-  def lon_s(self):
-    self.assertDecimalElement()
-    if self.element < 0 or self.element > 60:
-      raise PatternFail('out of range')
-    self.state['lon_s'] = self.element
+  def lon_s(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_decimal(element)
+    if dec < 0 or dec >= 60:
+      raise PatternRangeError
+    state['lon_s'] = dec
 
-  def lon_m_dec(self):
-    self.assertDecimalElement()
-    if self.element < 0 or self.element > 60:
-      raise PatternFail('out of range')
-    minutes = self.element.to_integral(rounding=decimal.ROUND_DOWN)
-    self.state['lon_m'] = minutes
-    self.state['lon_s'] = (self.element - minutes) * 60
+  def lon_m_dec(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_decimal(element)
+    if dec < 0 or dec >= 60:
+      raise PatternRangeError
+    minutes = dec.to_integral(rounding=decimal.ROUND_DOWN)
+    state['lon_m'] = minutes
+    state['lon_s'] = (dec - minutes) * 60
 
-  def lat_dec(self):
-    self.assertDecimalElement()
-    if self.element < -90 or self.element > 90:
-      raise PatternFail('out of range')
-    self.state['lat_dec'] = self.element
+  def lat_dec(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_decimal(element)
+    if dec < -90 or dec >= 90:
+      raise PatternRangeError
+    state['lat_dec'] = dec
 
-  def lon_dec(self):
-    self.assertDecimalElement()
-    if self.element < -180 or self.element > 180:
-      raise PatternFail('out of range')
-    self.state['lon_dec'] = self.element
+  def lon_dec(self, element: Any, state: PatternState) -> None:
+    dec = self._assert_decimal(element)
+    if dec <= -180 or dec >= 180:
+      raise PatternRangeError
+    state['lon_dec'] = dec
 
 
-class ParseLocation(object):
-  def __init__(self, geo_string):
-    self.result = []
+class CoordinateBuilder:
+  """Builds Coordinate objects from matched pattern values."""
 
-    self.apply_patterns(geo_string)
+  @staticmethod
+  def build(pattern_def: PatternDefinition, values: PatternState) -> Coordinate:
+    """Convert extracted values to a Coordinate based on pattern type."""
+    if pattern_def.pattern_type == 'compass':
+      latitude = (values['lat_h'] +
+                  (values['lat_m'] / 60) +
+                  (values['lat_s'] / 60 / 60))
+      if values['ns'] == 's':
+        latitude *= -1
+      longitude = (values['lon_h'] +
+                   (values['lon_m'] / 60) +
+                   (values['lon_s'] / 60 / 60))
+      if values['ew'] == 'w':
+        longitude *= -1
 
-  def _break_apart(self, geo_string):
-    elements = []
-    for m in re.finditer(r'([a-z]+)|(-?[0-9]+\.?[0-9]*)', geo_string, re.I):
+      confidence = 1000  # compass patterns are fairly strict
+
+    elif pattern_def.pattern_type == 'degrees':
+      # Check for overriding NSEW designation
+      lat_dec = values['lat_dec']
+      lon_dec = values['lon_dec']
+
+      if 'ns' in values and values['ns'] == 's':
+        lat_dec = -1 * abs(lat_dec)
+      if 'ew' in values and values['ew'] == 'w':
+        lon_dec = -1 * abs(lon_dec)
+
+      latitude = str(lat_dec)
+      longitude = str(lon_dec)
+
+      # Calculate confidence based on decimal precision
+      confidence = (CoordinateBuilder._get_decimal_places(lat_dec) *
+                    CoordinateBuilder._get_decimal_places(lon_dec))
+    else:
+      raise ValueError(f"Unknown pattern type: {pattern_def.pattern_type}")
+
+    return Coordinate(
+      latitude=str(latitude),
+      longitude=str(longitude),
+      confidence=confidence,
+      pattern_type=pattern_def.pattern_type,
+      pattern_definition=pattern_def.definition,
+    )
+
+  @staticmethod
+  def _get_decimal_places(num: decimal.Decimal) -> int:
+    """Return number of decimal places in a Decimal."""
+    sign, digits, exponent = num.as_tuple()
+    if isinstance(exponent, str):
+        return 0
+    return max(0, -exponent)
+
+
+class ParseLocation:
+  def __init__(self, geo_string: str) -> None:
+    self.result: list[Coordinate] = []
+    self.apply_patterns(urllib.parse.unquote(geo_string))
+
+  def _break_apart(self, geo_string: str) -> list[Union[str, decimal.Decimal]]:
+    elements: list[Union[str, decimal.Decimal]] = []
+    for m in re.finditer(r'([a-z]+)|(-?[0-9]+\.?[0-9]*)', geo_string, re.IGNORECASE):
       element = m.group()
-      if re.match(r'^([nsew]|north|south|west|east)$', element, re.I):
+      if re.match(REGEX_KNOWN_WORDS, element, re.IGNORECASE):
         elements.append(element)
       elif re.match(r'^(-?[0-9]+\.?[0-9]*)$', element):
         elements.append(decimal.Decimal(element))
     return elements
 
-  def apply_patterns(self, geo_string):
-    # For each possible pattern, try every offset of the broken apart list.
-    # Sort by the confidence that it is a good match.
-
+  def apply_patterns(self, geo_string: str) -> None:
+    """Try all patterns at all offsets, sort by confidence."""
     elements = self._break_apart(geo_string)
-    for pattern_re, pattern_type, pattern_definition in PATTERNS:
-      if re.search(pattern_re, geo_string):
-        for element_start in range(len(elements)):
 
-          # This is a bit wonky, our pattern object stores the state.
-          pattern = Pattern(pattern_type, pattern_definition)
-          if pattern.matches(elements[element_start:]):
-            self.result.append(pattern)
+    for url_regex, pattern_type, definition in PATTERNS:
+      pattern_def = PatternDefinition(url_regex, pattern_type, definition)
+
+      if pattern_def.matches_url(geo_string):
+        matcher = PatternMatcher(pattern_def)
+
+        for start_offset in range(len(elements)):
+          values = matcher.match(elements, start_offset)
+          if values:
+            coord = CoordinateBuilder.build(pattern_def, values)
+            self.result.append(coord)
 
     self.result.sort(key=lambda x: x.confidence, reverse=True)
 
-  def best_match(self):
-    if not self.result:
+  def best_match(self) -> Optional[Coordinate]:
+    if not self.result or self.result[0].confidence == 0:
       return None
-    elif self.result[0].confidence == 0:
-      return None
-    else:
-      return self.result[0]
+    return self.result[0]
 
-  def matches(self):
-    if not self.result:
+  def matches(self) -> list[Coordinate]:
+    if not self.result or self.result[0].confidence == 0:
       return []
-    elif self.result[0].confidence == 0:
-      return []
-    else:
-      return self.result
+    return self.result
 
 
 # Used by unit tests.
-def find(geo_string):
+def find(geo_string: str) -> Optional[Coordinate]:
   loc = ParseLocation(geo_string)
   if not loc.matches():
     return None
   return loc.best_match()
 
 
-def print_location(loc):
+def print_location(loc: Coordinate) -> None:
   for template in OUTPUT:
     print(template.format(lat=loc.latitude, lon=loc.longitude))
 
@@ -334,33 +358,45 @@ def print_location(loc):
 #       (to help output with multiline pastes)
 
 
-def main(args):
+def main(args: list[str]) -> int:
+  # NOTE: precision is open to discussion.
+  decimal.getcontext().prec = 9
+
   format = '%(filename)s:%(lineno)d %(levelname)s: %(message)s'
   logging.basicConfig(format=format, level=logging.ERROR)
+
+  ARGS = argparse.ArgumentParser(description='Translate geo location urls '
+                                             'into other destination urls.')
+  ARGS.add_argument('geo_string', nargs='+', metavar='<geo url>',
+                    help='geo location url or string')
+  ARGS.add_argument('-a', '--all', dest='all', action='store_true',
+                    help='show all matches (where confidence > 0)')
+  # TODO: arg to force lon/lat instead of lat/lon pattern.
+  # TODO: accept some basic geocoding for place names? wikipedia/wikimapia lookup?
 
   if len(args) == 1:
     # Force full help output when run without args.
     ARGS.print_help()
     ARGS.exit(2, '\nerror: no geo locations given\n')
-  args = ARGS.parse_args()
 
-  # NOTE: precision is open to discussion.
-  decimal.getcontext().prec = 9
+  parsed_args = ARGS.parse_args()
 
   exit_code = 0
 
-  for geo_string in args.geo_string:
+  for geo_string in parsed_args.geo_string:
     loc = ParseLocation(geo_string)
     if not loc.matches():
       sys.stderr.write('No match\n')
       exit_code = 1
-    elif args.all:
+    elif parsed_args.all:
       for result in loc.matches():
         if result.confidence > 0:
-          print('confidence:{} '.format(result.confidence), end='')
+          print(f'confidence:{result.confidence} ', end='')
           print_location(result)
     else:
-      print_location(loc.best_match())
+      best = loc.best_match()
+      if best:
+        print_location(best)
 
   return exit_code
 
