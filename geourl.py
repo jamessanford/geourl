@@ -34,7 +34,6 @@ ARGS.add_argument('-a', '--all', dest='all', action='store_true',
 # TODO: accept some basic geocoding for place names? wikipedia/wikimapia lookup?
 
 
-args = None  # ARGS.parse_args()
 log = logging.getLogger('geourl')
 
 
@@ -162,13 +161,8 @@ class Pattern(object):
       # The more specific a number after the decimal point, the more likely
       # it is to be a coordinate degree.
       def get_length(num):
-        # TODO: ICK
-        num_str = str(num)
-        offset = num_str.find('.')
-        if offset == -1:
-          return 0
-        else:
-          return len(num_str) - offset + 1
+        sign, digits, exponent = num.as_tuple()
+        return max(0, -exponent)
       self.confidence = (get_length(self.state['lat_dec']) *
                          get_length(self.state['lon_dec']))
 
@@ -347,19 +341,19 @@ def main(args):
     # Force full help output when run without args.
     ARGS.print_help()
     ARGS.exit(2, '\nerror: no geo locations given\n')
-  args = ARGS.parse_args()
+  parsed_args = ARGS.parse_args()
 
   # NOTE: precision is open to discussion.
   decimal.getcontext().prec = 9
 
   exit_code = 0
 
-  for geo_string in args.geo_string:
+  for geo_string in parsed_args.geo_string:
     loc = ParseLocation(geo_string)
     if not loc.matches():
       sys.stderr.write('No match\n')
       exit_code = 1
-    elif args.all:
+    elif parsed_args.all:
       for result in loc.matches():
         if result.confidence > 0:
           print('confidence:{} '.format(result.confidence), end='')
